@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from git_ew._internal.database import Database
 from git_ew._internal.email_fetcher import get_fetcher
 from git_ew._internal.email_sender import create_email_sender
-from git_ew._internal.thread_utils import build_thread_tree, thread_to_flat_list
+from git_ew._internal.thread_utils import build_thread_tree, thread_to_nested_structure
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -114,15 +114,14 @@ async def view_thread(request: Request, thread_id: int, *, flatten: bool = True)
 
     # Build thread tree
     tree = build_thread_tree(thread.messages)
-    flat_list = thread_to_flat_list(tree, flatten=flatten)
+    nested_messages = thread_to_nested_structure(tree)
 
     return templates.TemplateResponse(
         "thread.html",
         {
             "request": request,
             "thread": thread,
-            "messages": flat_list,
-            "flatten": flatten,
+            "messages": nested_messages,
         },
     )
 

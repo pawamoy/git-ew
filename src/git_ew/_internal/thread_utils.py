@@ -131,52 +131,27 @@ def flatten_linear_chains(roots: list[ThreadNode]) -> list[ThreadNode]:
     return roots
 
 
-def thread_to_flat_list(roots: list[ThreadNode], *, flatten: bool = True) -> list[dict[str, Any]]:
-    """Convert thread tree to a flat list for rendering.
+def thread_to_nested_structure(roots: list[ThreadNode]) -> list[dict[str, Any]]:
+    """Convert thread tree to nested structure, with single-children popped out to sibling level.
 
     Args:
         roots: List of root ThreadNodes.
-        flatten: Whether to flatten linear chains (keep only-child messages at parent's depth).
 
     Returns:
-        List of dictionaries with message data and rendering hints.
+        Nested list of messages.
     """
-    result = []
-
-    def traverse(node: ThreadNode, parent_node: ThreadNode | None = None, *, visual_depth: int = 0) -> None:
-        """Traverse the tree and build the flat list.
-
-        Args:
-            node: Current node to process.
-            parent_node: Parent node (if any).
-            visual_depth: The visual indentation depth for rendering.
-        """
-        # If this node is the only child of its parent and flatten is enabled,
-        # use the parent's visual depth instead of incrementing
-        if flatten and parent_node is not None and len(parent_node.children) == 1:
-            current_visual_depth = visual_depth
-        else:
-            current_visual_depth = visual_depth
-
-        result.append(
-            {
-                "message": node.message,
-                "depth": current_visual_depth,
-                "has_children": len(node.children) > 0,
-                "num_children": len(node.children),
-            },
-        )
-
-        # Traverse children with incremented depth
-        # Only increment visual depth if current node has multiple children or is a leaf
-        next_visual_depth = current_visual_depth + 1 if len(node.children) != 1 or not flatten else current_visual_depth
-
-        for child in node.children:
-            traverse(child, node, visual_depth=next_visual_depth)
-
+    result: list[dict[str, Any]] = []
     for root in roots:
-        traverse(root, None, visual_depth=0)
-
+        if len(root.children) == 1:
+            result.append({"message": root.message})
+            result.extend(thread_to_nested_structure(root.children))
+        elif root.children:
+            result.append({
+                "message": root.message,
+                "children": thread_to_nested_structure(root.children),
+            })
+        else:
+            result.append({"message": root.message})
     return result
 
 

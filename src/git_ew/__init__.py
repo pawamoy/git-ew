@@ -55,7 +55,7 @@ from git_ew._internal.thread_utils import (
     build_thread_tree,
     flatten_linear_chains,
     group_by_thread_subject,
-    thread_to_flat_list,
+    thread_to_nested_structure,
 )
 
 __all__: list[str] = [
@@ -101,7 +101,7 @@ __all__: list[str] = [
     "sync_emails",
     "template_dir",
     "templates",
-    "thread_to_flat_list",
+    "thread_to_nested_structure",
     "update_thread",
     "view_thread",
 ]

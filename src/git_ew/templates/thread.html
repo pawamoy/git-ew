@@ -2,6 +2,50 @@
 
 {% block title %}{{ thread.subject }} - git-ew{% endblock %}
 
+{% macro render_message(item) %}
+<div class="message-wrapper">
+    <div class="message" data-message-id="{{ item.message.message_id }}">
+        <div class="message-header">
+            <div class="message-info">
+                <button class="collapse-btn" onclick="toggleSubthread(event, '{{ item.message.message_id }}')" title="Toggle subthread">
+                    <span class="collapse-icon">▼</span>
+                </button>
+                <div class="message-author">
+                    <strong>{{ item.message.from_name }}</strong>
+                    <span class="message-email">&lt;{{ item.message.from_email }}&gt;</span>
+                </div>
+            </div>
+            <div class="message-date">
+                {{ item.message.date.strftime('%Y-%m-%d %H:%M') }}
+            </div>
+        </div>
+        <div class="message-body">
+            <pre>{{ item.message.body }}</pre>
+        </div>
+        {% if item.message.is_patch and item.message.patch_content %}
+        <div class="message-patch">
+            <details>
+                <summary>View Patch</summary>
+                <pre class="patch-content">{{ item.message.patch_content }}</pre>
+            </details>
+        </div>
+        {% endif %}
+        <div class="message-actions">
+            <button class="btn btn-sm btn-reply" onclick="replyToMessage('{{ item.message.message_id }}', '{{ item.message.from_name }}')">
+                Reply
+            </button>
+        </div>
+    </div>
+    {% if item.children %}
+    <div class="message-children">
+        {% for child in item.children %}
+            {{ render_message(child) }}
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
 {% block content %}
 <div class="thread-view">
     <div class="thread-header">
@@ -30,41 +74,7 @@
 
     <div class="messages-container">
         {% for item in messages %}
-        <div class="message"
-             style="margin-left: {{ item.depth * 20 }}px;"
-             data-message-id="{{ item.message.message_id }}"
-             data-depth="{{ item.depth }}">
-            <div class="message-header">
-                <div class="message-info">
-                    <button class="collapse-btn" onclick="toggleSubthread(event, '{{ item.message.message_id }}')" title="Toggle subthread">
-                        <span class="collapse-icon">▼</span>
-                    </button>
-                    <div class="message-author">
-                        <strong>{{ item.message.from_name }}</strong>
-                        <span class="message-email">&lt;{{ item.message.from_email }}&gt;</span>
-                    </div>
-                </div>
-                <div class="message-date">
-                    {{ item.message.date.strftime('%Y-%m-%d %H:%M') }}
-                </div>
-            </div>
-            <div class="message-body">
-                <pre>{{ item.message.body }}</pre>
-            </div>
-            {% if item.message.is_patch and item.message.patch_content %}
-            <div class="message-patch">
-                <details>
-                    <summary>View Patch</summary>
-                    <pre class="patch-content">{{ item.message.patch_content }}</pre>
-                </details>
-            </div>
-            {% endif %}
-            <div class="message-actions">
-                <button class="btn btn-sm btn-reply" onclick="replyToMessage('{{ item.message.message_id }}', '{{ item.message.from_name }}')">
-                    Reply
-                </button>
-            </div>
-        </div>
+            {{ render_message(item) }}
         {% endfor %}
     </div>
 
@@ -89,74 +99,16 @@
 <script>
 const threadId = {{ thread.id }};
 
-// Track which subthreads are collapsed
-const collapsedSubthreads = new Set();
-
 function toggleSubthread(event, messageId) {
     event.preventDefault();
     event.stopPropagation();
 
     const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
-    const depth = parseInt(messageElement.dataset.depth);
     const button = event.target.closest('.collapse-btn');
-    const messageBody = messageElement.querySelector('.message-body');
-    const messagePatch = messageElement.querySelector('.message-patch');
-    const messageActions = messageElement.querySelector('.message-actions');
+    const wrapper = messageElement.closest('.message-wrapper');
 
-    if (collapsedSubthreads.has(messageId)) {
-        // Expand
-        collapsedSubthreads.delete(messageId);
-        // Show body/patch/actions of this message
-        if (messageBody) messageBody.style.display = 'block';
-        if (messagePatch) messagePatch.style.display = 'block';
-        if (messageActions) messageActions.style.display = 'flex';
-        // Show all descendants
-        expandAllDescendants(messageElement, depth);
-        button.querySelector('.collapse-icon').textContent = '▼';
-    } else {
-        // Collapse
-        collapsedSubthreads.add(messageId);
-        // Hide body/patch/actions of this message
-        if (messageBody) messageBody.style.display = 'none';
-        if (messagePatch) messagePatch.style.display = 'none';
-        if (messageActions) messageActions.style.display = 'none';
-        // Hide all descendants
-        hideAllDescendants(messageElement, depth);
-        button.querySelector('.collapse-icon').textContent = '▶';
-    }
-}
-
-function hideAllDescendants(messageElement, parentDepth) {
-    let nextElement = messageElement.nextElementSibling;
-
-    while (nextElement) {
-        const nextDepth = parseInt(nextElement.dataset.depth);
-        // Stop when we reach a sibling or parent-level message
-        if (nextDepth <= parentDepth) break;
-
-        // Hide entire message element for descendants
-        nextElement.style.display = 'none';
-
-        // Remove from collapsed set
-        collapsedSubthreads.delete(nextElement.dataset.messageId);
-
-        nextElement = nextElement.nextElementSibling;
-    }
-}
-
-function expandAllDescendants(messageElement, parentDepth) {
-    let nextElement = messageElement.nextElementSibling;
-
-    while (nextElement) {
-        const nextDepth = parseInt(nextElement.dataset.depth);
-        // Stop when we reach a sibling or parent-level message
-        if (nextDepth <= parentDepth) break;
-
-        // Show entire message element
-        nextElement.style.display = 'block';
-
-        nextElement = nextElement.nextElementSibling;
-    }
+    messageElement.classList.toggle('collapsed');
+    button.querySelector('.collapse-icon').textContent = messageElement.classList.contains('collapsed') ? '▶' : '▼';
 }
 
 function replyToMessage(messageId, authorName) {
