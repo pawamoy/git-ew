@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}{{ thread.subject }} - git-ew{% endblock %}
+
+{% block content %}
+<div class="thread-view">
+    <div class="thread-header">
+        <div class="thread-title-row">
+            <h2>{{ thread.subject }}</h2>
+            <div class="thread-actions">
+                {% if thread.status == 'open' %}
+                <button class="btn btn-secondary" onclick="closeThread({{ thread.id }})">Close Thread</button>
+                {% else %}
+                <button class="btn btn-secondary" onclick="reopenThread({{ thread.id }})">Reopen Thread</button>
+                {% endif %}
+            </div>
+        </div>
+        <div class="thread-meta">
+            <span class="badge {% if thread.status == 'open' %}badge-open{% else %}badge-closed{% endif %}">
+                {{ thread.status|capitalize }}
+            </span>
+            {% if thread.is_patch %}
+            <span class="badge badge-patch">Patch</span>
+            {% endif %}
+            <span class="thread-date">
+                Created {{ thread.created_at.strftime('%Y-%m-%d %H:%M') }}
+            </span>
+        </div>
+    </div>
+
+    <div class="messages-container">
+        {% for item in messages %}
+        <div class="message {% if item.show_flattened %}message-flattened{% endif %}"
+             style="margin-left: {{ item.depth * 20 }}px;"
+             data-message-id="{{ item.message.message_id }}">
+            <div class="message-header">
+                <div class="message-author">
+                    <strong>{{ item.message.from_name }}</strong>
+                    <span class="message-email">&lt;{{ item.message.from_email }}&gt;</span>
+                </div>
+                <div class="message-date">
+                    {{ item.message.date.strftime('%Y-%m-%d %H:%M') }}
+                </div>
+            </div>
+            <div class="message-body">
+                <pre>{{ item.message.body }}</pre>
+            </div>
+            {% if item.message.is_patch and item.message.patch_content %}
+            <div class="message-patch">
+                <details>
+                    <summary>View Patch</summary>
+                    <pre class="patch-content">{{ item.message.patch_content }}</pre>
+                </details>
+            </div>
+            {% endif %}
+            <div class="message-actions">
+                <button class="btn btn-sm btn-reply" onclick="replyToMessage('{{ item.message.message_id }}', '{{ item.message.from_name }}')">
+                    Reply
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="reply-form" id="reply-form" style="display: none;">
+        <h3>Reply to <span id="reply-to-name"></span></h3>
+        <form onsubmit="submitReply(event)">
+            <input type="hidden" id="reply-to-id" name="in_reply_to">
+            <div class="form-group">
+                <label for="reply-body">Message (plain text):</label>
+                <textarea id="reply-body" name="body" rows="10" required placeholder="Write your reply here..."></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Send Reply</button>
+                <button type="button" class="btn btn-secondary" onclick="cancelReply()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const threadId = {{ thread.id }};
+
+function replyToMessage(messageId, authorName) {
+    document.getElementById('reply-form').style.display = 'block';
+    document.getElementById('reply-to-id').value = messageId;
+    document.getElementById('reply-to-name').textContent = authorName;
+    document.getElementById('reply-body').focus();
+}
+
+function cancelReply() {
+    document.getElementById('reply-form').style.display = 'none';
+    document.getElementById('reply-body').value = '';
+}
+
+async function submitReply(event) {
+    event.preventDefault();
+
+    const formData = {
+        body: document.getElementById('reply-body').value,
+        in_reply_to: document.getElementById('reply-to-id').value || null
+    };
+
+    try {
+        const response = await fetch(`/api/thread/${threadId}/comment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+
+        if (response.ok) {
+            alert('Reply sent successfully!');
+            location.reload();
+        } else {
+            const error = await response.json();
+            alert('Failed to send reply: ' + (error.detail || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Failed to send reply: ' + error.message);
+    }
+}
+
+async function closeThread(threadId) {
+    await updateThreadStatus(threadId, 'closed');
+}
+
+async function reopenThread(threadId) {
+    await updateThreadStatus(threadId, 'open');
+}
+
+async function updateThreadStatus(threadId, status) {
+    try {
+        const response = await fetch(`/api/thread/${threadId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status })
+        });
+
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Failed to update thread status');
+        }
+    } catch (error) {
+        alert('Failed to update thread status: ' + error.message);
+    }
+}
+</script>
+{% endblock %}

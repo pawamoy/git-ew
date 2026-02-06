@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Threads - git-ew{% endblock %}
+
+{% block content %}
+<div class="threads-list">
+    <div class="threads-header">
+        <h2>{{ current_status|capitalize }} Threads</h2>
+    </div>
+
+    {% if threads %}
+        <div class="thread-items">
+            {% for thread in threads %}
+            <div class="thread-item">
+                <div class="thread-icon">
+                    {% if thread.is_patch %}
+                    <span class="icon icon-patch" title="Patch">📝</span>
+                    {% else %}
+                    <span class="icon icon-discussion" title="Discussion">💬</span>
+                    {% endif %}
+                </div>
+                <div class="thread-content">
+                    <div class="thread-title">
+                        <a href="/thread/{{ thread.id }}" class="thread-link">
+                            {{ thread.subject }}
+                        </a>
+                        {% if thread.status == 'closed' %}
+                        <span class="badge badge-closed">Closed</span>
+                        {% endif %}
+                    </div>
+                    <div class="thread-meta">
+                        <span class="thread-date">
+                            Updated {{ thread.updated_at.strftime('%Y-%m-%d %H:%M') }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>No {{ current_status }} threads found.</p>
+            <p>Click "Sync Emails" to fetch threads from your email sources.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

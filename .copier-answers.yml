@@ -1,0 +1,19 @@
+# Changes here will be overwritten by Copier.
+_commit: 1.11.6
+_src_path: gh:pawamoy/copier-uv
+author_email: dev@pawamoy.fr
+author_fullname: Timothée Mazzucotelli
+author_username: pawamoy
+copyright_date: '2026'
+copyright_holder: Timothée Mazzucotelli
+copyright_holder_email: dev@pawamoy.fr
+copyright_license: ISC
+project_description: Git Email Workflow
+project_name: git-ew
+python_package_command_line_name: git-ew
+python_package_distribution_name: git-ew
+python_package_import_name: git_ew
+repository_name: git-ew
+repository_namespace: pawamoy
+repository_provider: github.com
+
