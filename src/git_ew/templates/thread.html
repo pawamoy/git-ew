@@ -106,65 +106,54 @@ function toggleSubthread(event, messageId) {
     if (collapsedSubthreads.has(messageId)) {
         // Expand
         collapsedSubthreads.delete(messageId);
-        button.querySelector('.collapse-icon').textContent = '▼';
+        // Show body/patch/actions of this message
         if (messageBody) messageBody.style.display = 'block';
         if (messagePatch) messagePatch.style.display = 'block';
         if (messageActions) messageActions.style.display = 'flex';
+        // Show all descendants
+        expandAllDescendants(messageElement, depth);
+        button.querySelector('.collapse-icon').textContent = '▼';
     } else {
         // Collapse
         collapsedSubthreads.add(messageId);
-        button.querySelector('.collapse-icon').textContent = '▶';
+        // Hide body/patch/actions of this message
         if (messageBody) messageBody.style.display = 'none';
         if (messagePatch) messagePatch.style.display = 'none';
         if (messageActions) messageActions.style.display = 'none';
+        // Hide all descendants
+        hideAllDescendants(messageElement, depth);
+        button.querySelector('.collapse-icon').textContent = '▶';
     }
-
-    // Toggle visibility of all child messages
-    updateSubthreadVisibility(messageElement, depth);
 }
 
-function updateSubthreadVisibility(messageElement, parentDepth) {
+function hideAllDescendants(messageElement, parentDepth) {
     let nextElement = messageElement.nextElementSibling;
 
     while (nextElement) {
         const nextDepth = parseInt(nextElement.dataset.depth);
+        // Stop when we reach a sibling or parent-level message
+        if (nextDepth <= parentDepth) break;
 
-        // Stop when we reach a message at the same or lower depth
-        if (nextDepth <= parentDepth) {
-            break;
-        }
+        // Hide entire message element for descendants
+        nextElement.style.display = 'none';
 
-        // Only directly toggle messages at depth+1 (direct children)
-        if (nextDepth === parentDepth + 1) {
-            const messageId = nextElement.dataset.messageId;
-            const isCollapsed = collapsedSubthreads.has(nextElement.querySelector('[data-message-id]')?.dataset.messageId || messageId);
+        // Remove from collapsed set
+        collapsedSubthreads.delete(nextElement.dataset.messageId);
 
-            if (collapsedSubthreads.has(messageElement.dataset.messageId)) {
-                // Parent is being collapsed, hide this message
-                nextElement.style.display = 'none';
-            } else {
-                // Parent is being expanded, show if not independently collapsed
-                nextElement.style.display = collapsedSubthreads.has(messageId) ? 'none' : 'block';
-            }
-        } else if (nextDepth > parentDepth + 1) {
-            // Child messages of child messages
-            if (collapsedSubthreads.has(messageElement.dataset.messageId)) {
-                nextElement.style.display = 'none';
-            } else {
-                // Check if any ancestor is collapsed
-                let shouldHide = false;
-                let checkElement = messageElement.nextElementSibling;
-                while (checkElement && checkElement !== nextElement) {
-                    const checkDepth = parseInt(checkElement.dataset.depth);
-                    if (checkDepth === nextDepth - 1 && collapsedSubthreads.has(checkElement.dataset.messageId)) {
-                        shouldHide = true;
-                        break;
-                    }
-                    checkElement = checkElement.nextElementSibling;
-                }
-                nextElement.style.display = shouldHide ? 'none' : 'block';
-            }
-        }
+        nextElement = nextElement.nextElementSibling;
+    }
+}
+
+function expandAllDescendants(messageElement, parentDepth) {
+    let nextElement = messageElement.nextElementSibling;
+
+    while (nextElement) {
+        const nextDepth = parseInt(nextElement.dataset.depth);
+        // Stop when we reach a sibling or parent-level message
+        if (nextDepth <= parentDepth) break;
+
+        // Show entire message element
+        nextElement.style.display = 'block';
 
         nextElement = nextElement.nextElementSibling;
     }
