@@ -105,7 +105,6 @@ function toggleSubthread(event, messageId) {
 
     const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
     const button = event.target.closest('.collapse-btn');
-    const wrapper = messageElement.closest('.message-wrapper');
 
     messageElement.classList.toggle('collapsed');
     button.querySelector('.collapse-icon').textContent = messageElement.classList.contains('collapsed') ? '▶' : '▼';

@@ -53,7 +53,6 @@ from git_ew._internal.sync import sync_all_sources, sync_command
 from git_ew._internal.thread_utils import (
     ThreadNode,
     build_thread_tree,
-    flatten_linear_chains,
     group_by_thread_subject,
     thread_to_nested_structure,
 )
@@ -80,7 +79,6 @@ __all__: list[str] = [
     "create_email_sender",
     "db",
     "extract_quoted_text",
-    "flatten_linear_chains",
     "get_engine",
     "get_fetcher",
     "get_parser",

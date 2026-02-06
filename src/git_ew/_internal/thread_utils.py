@@ -71,66 +71,6 @@ def build_thread_tree(messages: list[Message]) -> list[ThreadNode]:
     return roots
 
 
-def flatten_linear_chains(roots: list[ThreadNode]) -> list[ThreadNode]:
-    """Flatten linear chains in the thread tree.
-
-    A linear chain is a sequence of messages where each message has exactly one reply.
-    These can be flattened for better readability.
-
-    Args:
-        roots: List of root ThreadNodes.
-
-    Returns:
-        List of ThreadNodes with linear chains flattened.
-    """
-
-    def flatten_node(node: ThreadNode) -> list[ThreadNode]:
-        """Flatten a node and its children.
-
-        Returns a flat list of nodes representing the flattened chain.
-        """
-        result = [node]
-
-        # If this node has exactly one child, continue the chain
-        if len(node.children) == 1:
-            child = node.children[0]
-            # Recursively flatten the child
-            flattened_child = flatten_node(child)
-            result.extend(flattened_child)
-            # Clear children since we've flattened them
-            node.children = []
-        else:
-            # Multiple children or no children - recursively flatten each child
-            for child in node.children:
-                flatten_node(child)
-
-        return result
-
-    # For rendering purposes, we don't actually modify the tree structure,
-    # we just mark nodes that can be flattened
-    def mark_flattenable(node: ThreadNode) -> bool:
-        """Mark nodes that are part of a linear chain.
-
-        Returns True if this node is part of a linear chain.
-        """
-        if len(node.children) == 0:
-            return True
-        if len(node.children) == 1:
-            child_is_linear = mark_flattenable(node.children[0])
-            node.can_flatten = child_is_linear
-            return True
-        # Multiple children - not linear
-        node.can_flatten = False
-        for child in node.children:
-            mark_flattenable(child)
-        return False
-
-    for root in roots:
-        mark_flattenable(root)
-
-    return roots
-
-
 def thread_to_nested_structure(roots: list[ThreadNode]) -> list[dict[str, Any]]:
     """Convert thread tree to nested structure, with single-children popped out to sibling level.
 
