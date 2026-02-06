@@ -136,39 +136,46 @@ def thread_to_flat_list(roots: list[ThreadNode], *, flatten: bool = True) -> lis
 
     Args:
         roots: List of root ThreadNodes.
-        flatten: Whether to flatten linear chains.
+        flatten: Whether to flatten linear chains (keep only-child messages at parent's depth).
 
     Returns:
         List of dictionaries with message data and rendering hints.
     """
-    if flatten:
-        roots = flatten_linear_chains(roots)
-
     result = []
 
-    def traverse(node: ThreadNode, *, in_flattened_chain: bool = False) -> None:
-        """Traverse the tree and build the flat list."""
-        # Determine if we should show this node as flattened
-        show_flattened = flatten and node.can_flatten and len(node.children) == 1
+    def traverse(node: ThreadNode, parent_node: ThreadNode | None = None, *, visual_depth: int = 0) -> None:
+        """Traverse the tree and build the flat list.
+
+        Args:
+            node: Current node to process.
+            parent_node: Parent node (if any).
+            visual_depth: The visual indentation depth for rendering.
+        """
+        # If this node is the only child of its parent and flatten is enabled,
+        # use the parent's visual depth instead of incrementing
+        if flatten and parent_node is not None and len(parent_node.children) == 1:
+            current_visual_depth = visual_depth
+        else:
+            current_visual_depth = visual_depth
 
         result.append(
             {
                 "message": node.message,
-                "depth": node.depth,
-                "can_flatten": node.can_flatten,
-                "show_flattened": show_flattened,
-                "in_flattened_chain": in_flattened_chain,
+                "depth": current_visual_depth,
                 "has_children": len(node.children) > 0,
                 "num_children": len(node.children),
             },
         )
 
-        # Traverse children
+        # Traverse children with incremented depth
+        # Only increment visual depth if current node has multiple children or is a leaf
+        next_visual_depth = current_visual_depth + 1 if len(node.children) != 1 or not flatten else current_visual_depth
+
         for child in node.children:
-            traverse(child, in_flattened_chain=show_flattened)
+            traverse(child, node, visual_depth=next_visual_depth)
 
     for root in roots:
-        traverse(root)
+        traverse(root, None, visual_depth=0)
 
     return result
 

@@ -30,7 +30,7 @@
 
     <div class="messages-container">
         {% for item in messages %}
-        <div class="message {% if item.show_flattened %}message-flattened{% endif %}"
+        <div class="message"
              style="margin-left: {{ item.depth * 20 }}px;"
              data-message-id="{{ item.message.message_id }}"
              data-depth="{{ item.depth }}">
