@@ -460,3 +460,33 @@ body {
     text-align: center;
     color: var(--color-text-secondary);
 }
+
+/* Quoted Text Sections */
+.quoted-section {
+    margin-top: 12px;
+    padding: 0;
+}
+
+.quoted-section summary {
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    user-select: none;
+}
+
+.quoted-section summary:hover {
+    background-color: var(--color-bg-tertiary);
+}
+
+.quoted-section .quoted-text {
+    margin-top: 8px;
+    padding: 12px;
+    background-color: var(--color-bg-secondary);
+    border-left: 3px solid var(--color-border);
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    opacity: 0.85;
+}

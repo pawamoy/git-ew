@@ -19,8 +19,14 @@
                 {{ item.message.date.strftime('%Y-%m-%d %H:%M') }}
             </div>
         </div>
-        <div class="message-body">
-            <pre>{{ item.message.body }}</pre>
+    <div class="message-body">
+        <pre>{{ item.message.body[0] }}</pre>
+        {% if item.message.body[1] %}
+        <details class="quoted-section">
+            <summary>Show quoted text</summary>
+            <pre class="quoted-text">{{ item.message.body[1] }}</pre>
+        </details>
+        {% endif %}
         </div>
         {% if item.message.is_patch and item.message.patch_content %}
         <div class="message-patch">

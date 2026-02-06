@@ -4,10 +4,35 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from git_ew._internal.models import Message
+
+
+def detect_quoted_reply(message: Message) -> None:
+    """Detect and split quoted sections from email body.
+
+    Args:
+        body: The email body text.
+        parent_body: The parent message body for comparison (if available).
+    """
+    if not message.body:
+        message.body = ("", "")
+
+    # Starting from end, climb up lines until not quoted
+    lines = message.body.rstrip().splitlines()
+    quote_start_idx = len(lines)
+    while lines[quote_start_idx - 1].startswith(">") and quote_start_idx > 0:
+        quote_start_idx -= 1
+
+    # Split the content
+    if quote_start_idx is not None and quote_start_idx > 0:
+        message.body = (
+            "\n".join(lines[:quote_start_idx]).strip(),
+            "\n".join(lines[quote_start_idx:]).strip(),
+        )
 
 
 @dataclass
@@ -74,6 +99,8 @@ def build_thread_tree(messages: list[Message]) -> list[ThreadNode]:
 def thread_to_nested_structure(roots: list[ThreadNode]) -> list[dict[str, Any]]:
     """Convert thread tree to nested structure, with single-children popped out to sibling level.
 
+    Also detects and marks quoted sections in message bodies.
+
     Args:
         roots: List of root ThreadNodes.
 
@@ -82,6 +109,7 @@ def thread_to_nested_structure(roots: list[ThreadNode]) -> list[dict[str, Any]]:
     """
     result: list[dict[str, Any]] = []
     for root in roots:
+        detect_quoted_reply(root.message)
         if len(root.children) == 1:
             result.append({"message": root.message})
             result.extend(thread_to_nested_structure(root.children))
