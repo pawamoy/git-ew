@@ -5,6 +5,7 @@ import logging
 import tarfile
 import tempfile
 from datetime import datetime
+from email.header import decode_header
 from email.message import Message as EmailMessage
 from pathlib import Path
 from typing import Iterator
@@ -13,6 +14,63 @@ from git_ew._internal.database import Database
 from git_ew._internal.models import Message, Thread
 
 logger = logging.getLogger(__name__)
+
+
+def decode_email_header(header_value: str) -> str:
+    """Decode RFC 2047 encoded-word headers to plain text.
+
+    Args:
+        header_value: Raw header value (may contain encoded-words like =?UTF-8?Q?...?=).
+
+    Returns:
+        Decoded string.
+    """
+    if not header_value:
+        return ""
+
+    try:
+        # decode_header returns a list of tuples: (decoded_bytes, charset)
+        decoded_parts = []
+        for decoded_bytes, charset in decode_header(header_value):
+            if isinstance(decoded_bytes, bytes):
+                # If we got bytes, decode with the specified charset (or utf-8 as fallback)
+                try:
+                    decoded_str = decoded_bytes.decode(charset or "utf-8", errors="replace")
+                except (TypeError, LookupError):
+                    decoded_str = decoded_bytes.decode("utf-8", errors="replace")
+            else:
+                # Already a string
+                decoded_str = decoded_bytes or ""
+            decoded_parts.append(decoded_str)
+        return "".join(decoded_parts)
+    except Exception:
+        # Fallback: return original if decoding fails
+        return header_value
+
+
+def parse_email_address(from_header: str) -> tuple[str, str]:
+    """Parse From header to extract name and email address.
+
+    Args:
+        from_header: Raw From header value (may be "Name <email@example.com>" or just "email@example.com").
+
+    Returns:
+        Tuple of (name, email).
+    """
+    from email.utils import parseaddr
+
+    # parseaddr handles both "Name <email>" and "email" formats
+    name, email = parseaddr(from_header)
+
+    # Decode the name if it contains encoded-words
+    if name:
+        name = decode_email_header(name)
+
+    # If name is empty, use email as name
+    if not name:
+        name = email or from_header
+
+    return name, email
 
 
 def extract_emails_from_archive(archive_path: Path) -> Iterator[tuple[str, EmailMessage]]:
@@ -171,8 +229,9 @@ def ingest_archive(
                 continue
 
             # Parse email metadata
-            from_email = msg.get("From", "unknown@example.com")
-            subject = msg.get("Subject", "(no subject)")
+            from_header = msg.get("From", "unknown@example.com")
+            from_name, from_email = parse_email_address(from_header)
+            subject = decode_email_header(msg.get("Subject", "(no subject)"))
             date_str = msg.get("Date", "")
             in_reply_to = get_email_in_reply_to(msg)
 
@@ -190,14 +249,26 @@ def ingest_archive(
                     if part.get_content_type() == "text/plain":
                         payload = part.get_payload(decode=True)
                         if isinstance(payload, bytes):
-                            body = payload.decode("utf-8", errors="replace")
+                            # Get charset from Content-Type header, default to utf-8
+                            charset = part.get_content_charset() or "utf-8"
+                            try:
+                                body = payload.decode(charset, errors="replace")
+                            except (TypeError, LookupError):
+                                # Unknown charset, try utf-8 as fallback
+                                body = payload.decode("utf-8", errors="replace")
                         else:
                             body = payload
                         break
             else:
                 payload = msg.get_payload(decode=True)
                 if isinstance(payload, bytes):
-                    body = payload.decode("utf-8", errors="replace")
+                    # Get charset from Content-Type header, default to utf-8
+                    charset = msg.get_content_charset() or "utf-8"
+                    try:
+                        body = payload.decode(charset, errors="replace")
+                    except (TypeError, LookupError):
+                        # Unknown charset, try utf-8 as fallback
+                        body = payload.decode("utf-8", errors="replace")
                 else:
                     body = msg.get_payload()
 
@@ -272,7 +343,7 @@ def ingest_archive(
                 in_reply_to=in_reply_to,
                 thread_id=thread.id,
                 from_email=from_email,
-                from_name=from_email.split("<")[0].strip() if "<" in from_email else from_email,
+                from_name=from_name,
                 subject=subject,
                 date=date,
                 body=body,
