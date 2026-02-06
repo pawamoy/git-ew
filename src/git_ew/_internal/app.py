@@ -1,4 +1,4 @@
-"""FastAPI web application for git-ew."""
+# FastAPI web application for git-ew.
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
 # Global database instance
 db: Database | None = None
+"""Global database instance."""
 
 
 @asynccontextmanager
@@ -37,14 +38,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001
 
 
 app = FastAPI(title="git-ew", description="Git Email Workflow", lifespan=lifespan)
+"""FastAPI application instance."""
 
 # Setup templates
 template_dir = Path(__file__).parent / "templates"
+"""Path to templates directory."""
 template_dir.mkdir(exist_ok=True)
 templates = Jinja2Templates(directory=str(template_dir))
+"""Jinja2 templates renderer."""
 
 # Setup static files
 static_dir = Path(__file__).parent / "static"
+"""Path to static files directory."""
 static_dir.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
@@ -54,13 +59,16 @@ class CommentCreate(BaseModel):
     """Model for creating a comment."""
 
     body: str
+    """Comment body text."""
     in_reply_to: str | None = None
+    """Message ID this comment is replying to."""
 
 
 class ThreadUpdate(BaseModel):
     """Model for updating a thread."""
 
     status: str | None = None
+    """New status for the thread (open or closed)."""
 
 
 # Routes

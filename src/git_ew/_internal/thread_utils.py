@@ -1,4 +1,4 @@
-"""Thread organization and rendering utilities for git-ew."""
+# Thread organization and rendering utilities for git-ew.
 
 from __future__ import annotations
 
@@ -15,9 +15,13 @@ class ThreadNode:
     """Represents a node in a thread tree."""
 
     message: Message
+    """The message at this node."""
     children: list[ThreadNode]
+    """Child nodes in the thread tree."""
     depth: int = 0
+    """Depth in the tree."""
     can_flatten: bool = False
+    """Whether this node can be flattened."""
 
     def __post_init__(self):
         """Calculate if this node can be flattened."""

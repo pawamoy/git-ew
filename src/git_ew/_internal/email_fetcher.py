@@ -1,5 +1,3 @@
-"""Email fetching from various sources for git-ew."""
-
 from __future__ import annotations
 
 import asyncio
@@ -13,7 +11,7 @@ from git_ew._internal.email_parser import ParsedEmail, parse_email
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class EmailFetcher:
@@ -41,6 +39,7 @@ class MaildirFetcher(EmailFetcher):
             maildir_path: Path to Maildir directory.
         """
         self.maildir_path = Path(maildir_path)
+        """Path to the Maildir directory."""
 
     async def fetch_emails(self, since: str | None = None) -> AsyncIterator[ParsedEmail]:  # noqa: ARG002  # ty: ignore[invalid-method-override]
         """Fetch emails from Maildir.
@@ -65,7 +64,7 @@ class MaildirFetcher(EmailFetcher):
                 yield parsed
             except Exception as e:  # noqa: BLE001
                 # Skip malformed emails
-                logger.debug(f"Skipping malformed email {key}: {e}")
+                _logger.debug(f"Skipping malformed email {key}: {e}")
                 continue
 
             # Allow event loop to process
@@ -82,6 +81,7 @@ class MboxFetcher(EmailFetcher):
             mbox_path: Path to mbox file.
         """
         self.mbox_path = Path(mbox_path)
+        """Path to the mbox file."""
 
     async def fetch_emails(self, since: str | None = None) -> AsyncIterator[ParsedEmail]:  # noqa: ARG002  # ty: ignore[invalid-method-override]
         """Fetch emails from mbox.
@@ -105,7 +105,7 @@ class MboxFetcher(EmailFetcher):
                 yield parsed
             except Exception as e:  # noqa: BLE001
                 # Skip malformed emails
-                logger.debug(f"Skipping malformed email {key}: {e}")
+                _logger.debug(f"Skipping malformed email {key}: {e}")
                 continue
 
             # Allow event loop to process
@@ -122,6 +122,7 @@ class PublicInboxFetcher(EmailFetcher):
             archive_url: Base URL of the public-inbox archive.
         """
         self.archive_url = archive_url.rstrip("/")
+        """Base URL of the public-inbox archive."""
 
     async def fetch_emails(self, since: str | None = None) -> AsyncIterator[ParsedEmail]:
         """Fetch emails from public-inbox archive.

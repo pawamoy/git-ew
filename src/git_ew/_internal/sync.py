@@ -1,4 +1,4 @@
-"""Email synchronization utilities for git-ew."""
+# Email synchronization utilities for git-ew.
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import logging
 from git_ew._internal.database import Database
 from git_ew._internal.email_fetcher import get_fetcher
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 async def sync_all_sources(db: Database | None = None) -> dict[str, int | list[str]]:
@@ -84,12 +84,12 @@ async def sync_all_sources(db: Database | None = None) -> dict[str, int | list[s
             stats["processed_sources"] += 1
             stats["total_messages"] += source_messages
 
-            logger.info(f"✓ Synced {source_messages} messages from '{source.name}'")
+            _logger.info(f"✓ Synced {source_messages} messages from '{source.name}'")
 
         except Exception as e:
             error_msg = f"Error syncing source '{source.name}': {e}"
             stats["errors"].append(error_msg)
-            logger.exception("✗ %s", error_msg)
+            _logger.exception("✗ %s", error_msg)
 
     return stats
 
@@ -98,24 +98,24 @@ async def sync_command() -> int:
     """Run email sync as a standalone command."""
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-    logger.info("Starting email sync...")
-    logger.info("-" * 50)
+    _logger.info("Starting email sync...")
+    _logger.info("-" * 50)
 
     db = Database()
     await db.init_db()
 
     stats = await sync_all_sources(db)
 
-    logger.info("-" * 50)
-    logger.info("\nSync Summary:")
-    logger.info(f"  Sources processed: {stats['processed_sources']}/{stats['total_sources']}")
-    logger.info(f"  New threads: {stats['new_threads']}")
-    logger.info(f"  New messages: {stats['new_messages']}")
+    _logger.info("-" * 50)
+    _logger.info("\nSync Summary:")
+    _logger.info(f"  Sources processed: {stats['processed_sources']}/{stats['total_sources']}")
+    _logger.info(f"  New threads: {stats['new_threads']}")
+    _logger.info(f"  New messages: {stats['new_messages']}")
 
     if stats["errors"]:
-        logger.info(f"\n  Errors: {len(stats['errors'])}")  # ty: ignore[invalid-argument-type]
+        _logger.info(f"\n  Errors: {len(stats['errors'])}")  # ty: ignore[invalid-argument-type]
         for error in stats["errors"]:  # ty: ignore[not-iterable]
-            logger.info(f"    - {error}")
+            _logger.info(f"    - {error}")
 
     return 0 if not stats["errors"] else 1
 

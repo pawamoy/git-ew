@@ -1,4 +1,4 @@
-"""Database operations for git-ew."""
+# Database operations for git-ew.
 
 from __future__ import annotations
 
@@ -27,7 +27,9 @@ class Database:
             database_url: Database connection URL.
         """
         self.engine = create_async_engine(database_url, echo=False)
+        """SQLAlchemy async engine instance."""
         self.session_maker = async_sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)
+        """Async session factory."""
 
     async def init_db(self) -> None:
         """Initialize database tables."""

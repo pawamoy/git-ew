@@ -1,4 +1,4 @@
-"""Email parsing utilities for git-ew."""
+# Email parsing utilities for git-ew.
 
 from __future__ import annotations
 
@@ -43,16 +43,27 @@ class ParsedEmail:
             raw: Raw email content.
         """
         self.message_id = message_id
+        """Unique message ID."""
         self.from_email = from_email
+        """Sender email address."""
         self.from_name = from_name
+        """Sender name."""
         self.subject = subject
+        """Email subject."""
         self.date = date
+        """Email date."""
         self.body = body
+        """Email body text."""
         self.in_reply_to = in_reply_to
+        """Message ID this replies to."""
         self.references = references or []
+        """List of referenced message IDs."""
         self.is_patch = is_patch
+        """Whether this email contains a patch."""
         self.patch_content = patch_content
+        """Extracted patch content."""
         self.raw = raw
+        """Raw email content."""
 
     def get_thread_id(self) -> str:
         """Get the thread ID (first message in chain).

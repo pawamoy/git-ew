@@ -1,4 +1,4 @@
-"""Email sending functionality for git-ew."""
+# Email sending functionality for git-ew.
 
 from __future__ import annotations
 
@@ -34,12 +34,19 @@ class EmailSender:
             use_tls: Whether to use TLS.
         """
         self.smtp_host = smtp_host
+        """SMTP server hostname."""
         self.smtp_port = smtp_port
+        """SMTP server port."""
         self.from_email = from_email
+        """Sender email address."""
         self.from_name = from_name
+        """Sender name."""
         self.username = username
+        """SMTP username."""
         self.password = password
+        """SMTP password."""
         self.use_tls = use_tls
+        """Whether to use TLS."""
 
     def send_email(
         self,

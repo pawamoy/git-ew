@@ -1,4 +1,4 @@
-"""Command-line interface module for git-ew."""
+# Command-line interface module for git-ew.
 
 from __future__ import annotations
 
