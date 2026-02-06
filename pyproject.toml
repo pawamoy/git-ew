@@ -49,7 +49,7 @@ Gitter = "https://gitter.im/git-ew/community"
 Funding = "https://github.com/sponsors/pawamoy"
 
 [project.scripts]
-git-ew = "git_ew.cli:main"
+git-ew = "git_ew:main"
 
 [tool.pdm.version]
 source = "call"

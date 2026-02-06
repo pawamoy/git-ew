@@ -50,7 +50,7 @@ class Database:
     async def get_threads(
         self,
         status: str | None = None,
-        limit: int = 50,
+        limit: int | None = None,
         offset: int = 0,
     ) -> list[Thread]:
         """Get threads with optional filtering.
@@ -67,7 +67,9 @@ class Database:
             query = select(Thread).order_by(Thread.updated_at.desc())
             if status:
                 query = query.where(Thread.status == status)
-            query = query.limit(limit).offset(offset)
+            if limit is not None:
+                query = query.limit(limit)
+            query = query.offset(offset)
             result = await session.execute(query)
             return list(result.scalars().all())
 

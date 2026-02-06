@@ -41,14 +41,14 @@ app = FastAPI(title="git-ew", description="Git Email Workflow", lifespan=lifespa
 """FastAPI application instance."""
 
 # Setup templates
-template_dir = Path(__file__).parent / "templates"
+template_dir = Path(__file__).parent.parent / "templates"
 """Path to templates directory."""
 template_dir.mkdir(exist_ok=True)
 templates = Jinja2Templates(directory=str(template_dir))
 """Jinja2 templates renderer."""
 
 # Setup static files
-static_dir = Path(__file__).parent / "static"
+static_dir = Path(__file__).parent.parent / "static"
 """Path to static files directory."""
 static_dir.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
