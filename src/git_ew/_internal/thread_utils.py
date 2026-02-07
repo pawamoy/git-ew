@@ -7,8 +7,64 @@ from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import TYPE_CHECKING, Any
 
+import markdown
+from pymdownx.emoji import twemoji, to_svg
+
 if TYPE_CHECKING:
     from git_ew._internal.models import Message
+
+# Markdown instance with configured extensions
+_md = markdown.Markdown(
+    extensions=[
+        "abbr",
+        "admonition",
+        "attr_list",
+        "def_list",
+        "footnotes",
+        "md_in_html",
+        "nl2br",
+        "toc",
+        "pymdownx.arithmatex",
+        "pymdownx.betterem",
+        "pymdownx.caret",
+        "pymdownx.details",
+        "pymdownx.emoji",
+        "pymdownx.highlight",
+        "pymdownx.inlinehilite",
+        "pymdownx.keys",
+        "pymdownx.magiclink",
+        "pymdownx.mark",
+        "pymdownx.smartsymbols",
+        "pymdownx.superfences",
+        "pymdownx.tabbed",
+        "pymdownx.tasklist",
+        "pymdownx.tilde",
+    ],
+    extension_configs={
+        "toc": {"permalink": True},
+        "pymdownx.arithmatex": {"generic": True},
+        "pymdownx.betterem": {"smart_enable": "all"},
+        "pymdownx.emoji": {
+            "emoji_index": twemoji,
+            "emoji_generator": to_svg,
+        },
+        "pymdownx.tabbed": {"alternate_style": True},
+        "pymdownx.tasklist": {"custom_checkbox": True},
+    },
+)
+
+
+def render_markdown(text: str) -> str:
+    """Render plain text as markdown HTML.
+
+    Args:
+        text: Plain text to render.
+
+    Returns:
+        HTML string.
+    """
+    _md.reset()
+    return _md.convert(text)
 
 
 def detect_quoted_reply(message: Message) -> None:
@@ -30,6 +86,7 @@ def detect_quoted_reply(message: Message) -> None:
     # Split the content
     if quote_start_idx is not None and quote_start_idx > 0:
         message.body = (
+            # TODO: Option to render Markdown.
             "\n".join(lines[:quote_start_idx]).strip(),
             "\n".join(lines[quote_start_idx:]).strip(),
         )

@@ -351,6 +351,7 @@ body {
 
 .message-body {
     margin-bottom: 12px;
+    line-height: 1.6;
 }
 
 .message-body pre {
@@ -358,7 +359,108 @@ body {
     word-wrap: break-word;
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
     font-size: 12px;
-    line-height: 1.5;
+    background-color: var(--color-bg-secondary);
+    padding: 12px;
+    border-radius: 6px;
+    overflow-x: auto;
+}
+
+/* Markdown rendered content */
+.message-body h1,
+.message-body h2,
+.message-body h3,
+.message-body h4,
+.message-body h5,
+.message-body h6 {
+    margin-top: 16px;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.message-body h1 {
+    font-size: 24px;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 8px;
+}
+
+.message-body h2 {
+    font-size: 20px;
+}
+
+.message-body h3 {
+    font-size: 16px;
+}
+
+.message-body p {
+    margin-bottom: 8px;
+}
+
+.message-body ul,
+.message-body ol {
+    margin-left: 20px;
+    margin-bottom: 8px;
+}
+
+.message-body li {
+    margin-bottom: 4px;
+}
+
+.message-body code {
+    background-color: var(--color-bg-secondary);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.9em;
+}
+
+.message-body a {
+    color: var(--color-accent);
+    text-decoration: none;
+}
+
+.message-body a:hover {
+    text-decoration: underline;
+}
+
+.message-body blockquote {
+    border-left: 3px solid var(--color-border);
+    margin-left: 0;
+    padding-left: 12px;
+    color: var(--color-text-secondary);
+}
+
+.message-body table {
+    border-collapse: collapse;
+    margin-bottom: 8px;
+    width: 100%;
+}
+
+.message-body th,
+.message-body td {
+    border: 1px solid var(--color-border);
+    padding: 8px;
+    text-align: left;
+}
+
+.message-body th {
+    background-color: var(--color-bg-secondary);
+    font-weight: 600;
+}
+
+.message-body details {
+    margin-bottom: 8px;
+}
+
+.message-body summary {
+    cursor: pointer;
+    font-weight: 500;
+    user-select: none;
+}
+
+.message-body hr {
+    border: none;
+    border-top: 1px solid var(--color-border);
+    margin: 16px 0;
 }
 
 .message-patch {

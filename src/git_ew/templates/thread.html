@@ -20,14 +20,15 @@
             </div>
         </div>
     <div class="message-body">
-        <pre>{{ item.message.body[0] }}</pre>
+        {# TODO: Option to render Markdown (`|safe`) #}
+        {{ item.message.body[0] }}
         {% if item.message.body[1] %}
         <details class="quoted-section">
             <summary>Show quoted text</summary>
             <pre class="quoted-text">{{ item.message.body[1] }}</pre>
         </details>
         {% endif %}
-        </div>
+    </div>
         {% if item.message.is_patch and item.message.patch_content %}
         <div class="message-patch">
             <details>
