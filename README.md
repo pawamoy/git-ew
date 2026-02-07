@@ -7,6 +7,9 @@
 
 Git Email Workflow - A GitHub-like web interface for email-based git workflows
 
+> [!NOTE]
+> This project is developed with the assistance of LLMs / coding agents. It's not fully functional yet. My main use of it will be to continue my contribution of a ZSH_XTRACEFD feature to Zsh, through their zsh-workers mailing list.
+
 ## Overview
 
 **git-ew** provides a GitHub-style web interface for email-based git workflows. It organizes emails into threads, handles infinite nesting, and allows posting comments via plain-text emails.
