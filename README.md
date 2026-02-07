@@ -14,6 +14,8 @@ Git Email Workflow - A GitHub-like web interface for email-based git workflows
 
 **git-ew** provides a GitHub-style web interface for email-based git workflows. It organizes emails into threads, handles infinite nesting, and allows posting comments via plain-text emails.
 
+![screenshot](https://github.com/user-attachments/assets/d94cdee4-898f-4f1f-be0e-c513714508e6)
+
 ### Features
 
 - GitHub-like interface for viewing threads and patches
