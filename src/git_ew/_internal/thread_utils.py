@@ -100,19 +100,6 @@ class ThreadNode:
     """The message at this node."""
     children: list[ThreadNode]
     """Child nodes in the thread tree."""
-    depth: int = 0
-    """Depth in the tree."""
-    can_flatten: bool = False
-    """Whether this node can be flattened."""
-
-    def __post_init__(self):
-        """Calculate if this node can be flattened."""
-        # A node can be flattened if it has exactly one child and that child can also be flattened
-        # or if it has exactly one child that is a leaf
-        if len(self.children) == 1:
-            self.can_flatten = True
-        else:
-            self.can_flatten = False
 
 
 def build_thread_tree(messages: list[Message]) -> list[ThreadNode]:
@@ -140,15 +127,6 @@ def build_thread_tree(messages: list[Message]) -> list[ThreadNode]:
         else:
             # This is a root message
             roots.append(node)
-
-    # Set depths
-    def set_depths(node: ThreadNode, depth: int = 0) -> None:
-        node.depth = depth
-        for child in node.children:
-            set_depths(child, depth + 1)
-
-    for root in roots:
-        set_depths(root)
 
     return roots
 
@@ -178,28 +156,3 @@ def thread_to_nested_structure(roots: list[ThreadNode]) -> list[dict[str, Any]]:
         else:
             result.append({"message": root.message})
     return result
-
-
-def group_by_thread_subject(messages: list[Message]) -> dict[str, list[Message]]:
-    """Group messages by thread subject.
-
-    Args:
-        messages: List of messages.
-    """
-
-    def clean_subject(subject: str) -> str:
-        """Clean subject line for grouping."""
-        # Remove RE:, Re:, FWD:, etc.
-        subject = re.sub(r"^(RE|Re|FW|Fw|FWD|Fwd):\s*", "", subject, flags=re.IGNORECASE)
-        # Remove [tag] prefixes
-        subject = re.sub(r"^\[.*?\]\s*", "", subject)
-        return subject.strip().lower()
-
-    groups = {}
-    for msg in messages:
-        clean = clean_subject(msg.subject)
-        if clean not in groups:
-            groups[clean] = []
-        groups[clean].append(msg)
-
-    return groups

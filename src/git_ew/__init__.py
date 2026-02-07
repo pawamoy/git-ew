@@ -53,7 +53,6 @@ from git_ew._internal.sync import sync_all_sources, sync_command
 from git_ew._internal.thread_utils import (
     ThreadNode,
     build_thread_tree,
-    group_by_thread_subject,
     thread_to_nested_structure,
 )
 
@@ -84,7 +83,6 @@ __all__: list[str] = [
     "get_parser",
     "get_session_maker",
     "get_thread_api",
-    "group_by_thread_subject",
     "index",
     "init_db",
     "lifespan",
