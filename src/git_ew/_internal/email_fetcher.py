@@ -153,11 +153,17 @@ class IMAPFetcher(EmailFetcher):
     ):
         """Initialize an IMAP fetcher."""
         self.host = host
+        """IMAP server hostname."""
         self.port = port
+        """IMAP server port."""
         self.username = username
+        """IMAP account username."""
         self.password = password
+        """IMAP account password."""
         self.folders = folders or ["INBOX", "Sent"]
+        """Folders to fetch messages from."""
         self.mailing_list = mailing_list or {}
+        """Mailing list headers used to filter messages."""
 
     async def fetch_emails(self, since: str | None = None) -> AsyncIterator[ParsedEmail]:
         """Fetch and parse messages from configured IMAP folders."""

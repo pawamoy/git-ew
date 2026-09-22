@@ -14,7 +14,7 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-"""Zsh-workers mailing list utilities."""
+# Zsh-workers mailing list utilities.
 
 import argparse
 import logging
@@ -27,6 +27,7 @@ from urllib.error import URLError
 from urllib.request import urlopen, urlretrieve
 
 BASE_URL = "https://www.zsh.org/mla/zsh-workers/"
+"""Base URL for zsh-workers mailing list archives."""
 _logger = logging.getLogger(__name__)
 
 
@@ -36,6 +37,7 @@ class LinkExtractor(HTMLParser):
     def __init__(self):
         super().__init__()
         self.archives: dict[str, date | None] = {}
+        """Archive filenames and their dates found in the page."""
         self._in_pre = False
         self._current_line = ""
 
@@ -199,7 +201,7 @@ def download_archive(filename: str, archive_dir: Path) -> bool:
         return True
 
 
-def main() -> int:
+def _main() -> int:
     """Main entry point."""
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     parser = argparse.ArgumentParser(
@@ -295,4 +297,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_main())

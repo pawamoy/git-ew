@@ -243,6 +243,6 @@ def test(ctx: Context, *cli_args: str) -> None:
             "tests",
             config_file="config/pytest.ini",
             color="yes",
-        ).add_args("-n", "auto", *cli_args),
+        ).add_args("-n", "2", *cli_args),
         title=pyprefix("Running tests"),
     )

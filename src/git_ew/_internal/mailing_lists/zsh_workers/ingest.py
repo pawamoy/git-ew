@@ -16,7 +16,7 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-"""Archive ingestion module for zsh-workers mailing list archives."""
+# Archive ingestion for zsh-workers mailing list archives.
 
 from __future__ import annotations
 

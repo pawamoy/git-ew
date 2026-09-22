@@ -14,7 +14,7 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-"""Runtime secret resolution helpers."""
+# Runtime secret resolution helpers.
 
 from __future__ import annotations
 
@@ -43,6 +43,7 @@ def resolve_password(config: dict[str, Any], *, required: bool = True) -> str | 
             check=True,
             capture_output=True,
             text=True,
+            encoding="utf-8",
             timeout=10,
         )
         password = result.stdout.strip()
