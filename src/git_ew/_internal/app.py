@@ -37,6 +37,7 @@ class _ReplySource(Protocol):
     @property
     def raw_email(self) -> str | None: ...
 
+
 # Global database instance
 db: Database | None = None
 """Global database instance."""

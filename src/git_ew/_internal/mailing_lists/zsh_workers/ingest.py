@@ -58,7 +58,7 @@ def decode_email_header(header_value: str) -> str:
                 decoded_str = decoded_bytes or ""
             decoded_parts.append(decoded_str)
         return "".join(decoded_parts)
-    except Exception:  # noqa: BLE001
+    except Exception:
         _logger.debug("Could not decode email header %r", header_value, exc_info=True)
         return header_value
 
@@ -107,7 +107,7 @@ def extract_emails_from_archive(archive_path: Path) -> Iterator[tuple[str, Email
                         content = f.read()
                         msg = email.message_from_bytes(content)
                         yield (member.name, msg)
-                    except Exception:  # noqa: BLE001
+                    except Exception:
                         _logger.debug("Could not parse %s from %s", member.name, archive_path, exc_info=True)
 
 
@@ -201,7 +201,7 @@ def find_email_by_xseq(
                 xseq = get_email_xseq(msg)
                 if xseq == xseq_number:
                     return (msg, xseq)
-        except Exception:  # noqa: BLE001
+        except Exception:
             _logger.debug("Could not search archive %s", archive_path, exc_info=True)
             continue
     return None
