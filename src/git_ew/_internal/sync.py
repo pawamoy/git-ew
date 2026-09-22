@@ -48,6 +48,8 @@ async def sync_all_sources(db: Database | None = None) -> dict[str, int | list[s
                 # Check if message already exists
                 existing = await db.get_message_by_id(parsed_email.message_id)
                 if existing:
+                    if parsed_email.patch_content and not existing.patch_content:
+                        await db.update_message_patch(parsed_email.message_id, parsed_email.patch_content)
                     continue
 
                 # Find or create thread

@@ -6,6 +6,7 @@ import email
 import re
 from datetime import UTC, datetime
 from email import policy
+from email.message import Message
 from email.utils import parseaddr, parsedate_to_datetime
 
 
@@ -126,25 +127,8 @@ def parse_email(raw_email: str | bytes) -> ParsedEmail:
     references_header = msg.get("References", "")
     references = [ref.strip("<>") for ref in references_header.split() if ref.strip("<>")]
 
-    # Extract body
-    body = ""
-    patch_content = None
-    is_patch = False
-
-    if msg.is_multipart():
-        for part in msg.walk():
-            content_type = part.get_content_type()
-            if content_type == "text/plain":
-                try:
-                    body = part.get_content()
-                    break
-                except Exception:  # noqa: BLE001, S112
-                    continue
-    else:
-        try:
-            body = msg.get_content()
-        except Exception:  # noqa: BLE001
-            body = ""
+    body, patch_content = extract_body_and_patch(msg)
+    is_patch = bool(patch_content)
 
     # Detect and extract patches
     # Look for git diff format or unified diff format
@@ -180,6 +164,44 @@ def parse_email(raw_email: str | bytes) -> ParsedEmail:
         patch_content=patch_content,
         raw=raw_email_bytes.decode("utf-8", errors="replace"),
     )
+
+
+def _decode_part_payload(part: Message) -> str:
+    """Decode a MIME part payload to text."""
+    payload = part.get_payload(decode=True)
+    if isinstance(payload, bytes):
+        charset = part.get_content_charset() or "utf-8"
+        try:
+            return payload.decode(charset, errors="replace")
+        except (LookupError, TypeError):
+            return payload.decode("utf-8", errors="replace")
+    if isinstance(payload, str):
+        return payload
+    return ""
+
+
+def extract_body_and_patch(message: Message) -> tuple[str, str | None]:
+    """Extract the plain-text body and any MIME patch attachment."""
+    body = ""
+    patch_content = None
+
+    for part in message.walk():
+        if part.is_multipart():
+            continue
+
+        content_type = part.get_content_type().lower()
+        filename = (part.get_filename() or "").lower()
+        content = _decode_part_payload(part)
+
+        if content_type in {"text/x-patch", "text/x-diff", "application/x-patch", "application/x-diff"} or filename.endswith(
+            (".patch", ".diff")
+        ):
+            if patch_content is None:
+                patch_content = content
+        elif content_type == "text/plain" and not body:
+            body = content
+
+    return body, patch_content
 
 
 def extract_quoted_text(body: str) -> tuple[str, str]:

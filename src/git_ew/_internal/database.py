@@ -205,6 +205,19 @@ class Database:
             result = await session.execute(query)
             return result.scalar_one_or_none()
 
+    async def update_message_patch(self, message_id: str, patch_content: str) -> None:
+        """Add patch content to an existing message."""
+        async with self.session() as session:
+            query = select(Message).where(Message.message_id == message_id)
+            result = await session.execute(query)
+            message = result.scalar_one_or_none()
+            if message and not message.patch_content:
+                message.patch_content = patch_content
+                message.is_patch = True
+                thread = await session.get(Thread, message.thread_id)
+                if thread:
+                    thread.is_patch = True
+
     async def get_config(self, key: str, default: Any = None) -> Any:
         """Get a configuration value.
 

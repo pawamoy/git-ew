@@ -12,6 +12,7 @@ from typing import Iterator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from git_ew._internal.email_parser import extract_body_and_patch
 from git_ew._internal.database import Database
 from git_ew._internal.models import Base, Message, Thread
 
@@ -224,9 +225,16 @@ def ingest_archive(
             if on_email_found:
                 on_email_found(filename, msg, message_id)
 
+            # Extract patch attachments before deduplication so existing messages
+            # can be enriched when the ingestion logic gains new MIME support.
+            body, patch_content = extract_body_and_patch(msg)
+
             # Check if message already exists (deduplication)
             existing = session.query(Message).filter_by(message_id=message_id).first()
             if existing:
+                if patch_content and not existing.patch_content:
+                    existing.patch_content = patch_content
+                    existing.is_patch = True
                 skipped += 1
                 continue
 
@@ -243,36 +251,6 @@ def ingest_archive(
                 date = parsedate_to_datetime(date_str)
             except (TypeError, ValueError):
                 date = datetime.now()
-
-            # Get email body
-            body = ""
-            if msg.is_multipart():
-                for part in msg.walk():
-                    if part.get_content_type() == "text/plain":
-                        payload = part.get_payload(decode=True)
-                        if isinstance(payload, bytes):
-                            # Get charset from Content-Type header, default to utf-8
-                            charset = part.get_content_charset() or "utf-8"
-                            try:
-                                body = payload.decode(charset, errors="replace")
-                            except (TypeError, LookupError):
-                                # Unknown charset, try utf-8 as fallback
-                                body = payload.decode("utf-8", errors="replace")
-                        else:
-                            body = payload
-                        break
-            else:
-                payload = msg.get_payload(decode=True)
-                if isinstance(payload, bytes):
-                    # Get charset from Content-Type header, default to utf-8
-                    charset = msg.get_content_charset() or "utf-8"
-                    try:
-                        body = payload.decode(charset, errors="replace")
-                    except (TypeError, LookupError):
-                        # Unknown charset, try utf-8 as fallback
-                        body = payload.decode("utf-8", errors="replace")
-                else:
-                    body = msg.get_payload()
 
             # Try to find or create thread
             # Use the first message in References (original message) as thread root
@@ -350,7 +328,8 @@ def ingest_archive(
                 date=date,
                 body=body,
                 raw_email=str(msg),
-                is_patch="patch" in subject.lower() or "---" in body[:500],
+                is_patch=bool(patch_content) or "patch" in subject.lower() or "---" in body[:500],
+                patch_content=patch_content,
             )
             session.add(message)
             inserted += 1
