@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import imaplib
 import smtplib
-from datetime import datetime
+from datetime import UTC, datetime
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 from typing import Any
@@ -182,7 +182,7 @@ def append_sent_message(msg: EmailMessage, config: dict[str, Any], folder: str =
         status, _ = client.append(
             folder,
             "\\Seen",
-            imaplib.Time2Internaldate(datetime.now().timestamp()),
+            imaplib.Time2Internaldate(datetime.now(UTC).timestamp()),
             msg.as_bytes(),
         )
         if status != "OK":
@@ -197,6 +197,6 @@ def create_email_sender(config: dict[str, Any]) -> EmailSender:
         from_email=config["from_email"],
         from_name=config.get("from_name", config["from_email"]),
         username=config.get("username"),
-        password=resolve_password(config),
+        password=resolve_password(config, required=False),
         use_tls=config.get("use_tls", True),
     )

@@ -4,11 +4,22 @@ from __future__ import annotations
 
 import shlex
 import subprocess
-from typing import Any
+from typing import Any, Literal, overload
 
 
-def resolve_password(config: dict[str, Any]) -> str:
-    """Resolve a password stored directly or provided by a command."""
+@overload
+def resolve_password(config: dict[str, Any], *, required: Literal[True] = True) -> str: ...
+
+
+@overload
+def resolve_password(config: dict[str, Any], *, required: Literal[False]) -> str | None: ...
+
+
+def resolve_password(config: dict[str, Any], *, required: bool = True) -> str | None:
+    """Resolve a configured password.
+
+    Return `None` when no password is configured and `required` is false.
+    """
     command = config.get("password_command")
     if command:
         result = subprocess.run(
@@ -26,4 +37,6 @@ def resolve_password(config: dict[str, Any]) -> str:
     password = config.get("password")
     if password:
         return password
+    if not required:
+        return None
     raise RuntimeError("neither password nor password_command is configured")
