@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import smtplib
+import imaplib
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
+from datetime import datetime
 from typing import Any
 
 from git_ew._internal.secrets import resolve_password
@@ -72,6 +74,20 @@ class EmailSender:
         Returns:
             Message ID of sent email.
         """
+        msg = self.build_email(to_email, subject, body, in_reply_to, references, cc)
+        self.send_message(msg)
+        return msg["Message-ID"].strip("<>")
+
+    def build_email(
+        self,
+        to_email: str,
+        subject: str,
+        body: str,
+        in_reply_to: str | None = None,
+        references: list[str] | None = None,
+        cc: list[str] | None = None,
+    ) -> EmailMessage:
+        """Build an email without sending it."""
         msg = EmailMessage()
         msg.set_content(body)
 
@@ -91,7 +107,10 @@ class EmailSender:
         if references:
             msg["References"] = " ".join(f"<{ref}>" for ref in references)
 
-        # Send email
+        return msg
+
+    def send_message(self, msg: EmailMessage) -> None:
+        """Send a prepared email over SMTP."""
         with smtplib.SMTP(self.smtp_host, self.smtp_port) as smtp:
             if self.use_tls:
                 smtp.starttls()
@@ -100,8 +119,6 @@ class EmailSender:
                 smtp.login(self.username, self.password)
 
             smtp.send_message(msg)
-
-        return msg["Message-ID"].strip("<>")
 
     def send_reply(
         self,
@@ -125,19 +142,28 @@ class EmailSender:
         Returns:
             Message ID of sent email.
         """
-        # Add Re: prefix if not present
+        msg = self.build_reply(to_email, subject, body, in_reply_to, references, cc)
+        self.send_message(msg)
+        return msg["Message-ID"].strip("<>")
+
+    def build_reply(
+        self,
+        to_email: str,
+        subject: str,
+        body: str,
+        in_reply_to: str,
+        references: list[str] | None = None,
+        cc: list[str] | None = None,
+    ) -> EmailMessage:
+        """Build a reply email without sending it."""
         if not subject.lower().startswith("re:"):
             subject = f"Re: {subject}"
 
-        # Build references list
-        if references is None:
-            references = []
-
-        # Add in_reply_to to references if not already there
+        references = list(references or [])
         if in_reply_to not in references:
             references.append(in_reply_to)
 
-        return self.send_email(
+        return self.build_email(
             to_email=to_email,
             subject=subject,
             body=body,
@@ -145,6 +171,22 @@ class EmailSender:
             references=references,
             cc=cc,
         )
+
+
+def append_sent_message(msg: EmailMessage, config: dict[str, Any], folder: str = "Sent") -> None:
+    """Append a sent message to an IMAP folder using a resolved password."""
+    host = config.get("host", "imap.fastmail.com")
+    port = int(config.get("port", 993))
+    with imaplib.IMAP4_SSL(host, port) as client:
+        client.login(config["username"], resolve_password(config))
+        status, _ = client.append(
+            folder,
+            "\\Seen",
+            imaplib.Time2Internaldate(datetime.now().timestamp()),
+            msg.as_bytes(),
+        )
+        if status != "OK":
+            raise RuntimeError(f"Unable to append sent message to IMAP folder {folder!r}")
 
 
 def create_email_sender(config: dict[str, Any]) -> EmailSender:
