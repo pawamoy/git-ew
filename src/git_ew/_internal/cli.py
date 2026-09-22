@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 import sys
-from datetime import datetime
+from datetime import date
 from pathlib import Path
 from typing import Any
 from urllib.error import URLError
@@ -17,6 +18,7 @@ from git_ew._internal.config import config_command
 from git_ew._internal.database import Database
 from git_ew._internal.mailing_lists.zsh_workers.ingest import ingest_archives
 from git_ew._internal.mailing_lists.zsh_workers.sync_archives import (
+    _get_matching_archives,
     download_archive,
     fetch_archive_list,
     get_missing_archives,
@@ -33,15 +35,15 @@ class _DebugInfo(argparse.Action):
         sys.exit(0)
 
 
-def _parse_archive_date(value: str, *, end_of_year: bool = False) -> datetime:
+def _parse_archive_date(value: str, *, end_of_year: bool = False) -> date:
     """Parse a CLI archive date."""
     try:
         if len(value) == 4:
             year = int(value)
             if end_of_year:
-                return datetime(year + 1, 1, 1)
-            return datetime(year, 1, 1)
-        return datetime.strptime(value, "%Y-%m-%d")
+                return date(year, 12, 31)
+            return date(year, 1, 1)
+        return date.fromisoformat(value)
     except ValueError as error:
         raise argparse.ArgumentTypeError(
             f"invalid date {value!r}; use YYYY or YYYY-MM-DD",
@@ -146,6 +148,7 @@ def main(args: list[str] | None = None) -> int:
     Returns:
         An exit code.
     """
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     parser = get_parser()
     opts = parser.parse_args(args=args)
 
@@ -188,9 +191,11 @@ def main(args: list[str] | None = None) -> int:
             print(f"Error fetching zsh-workers archive list: {error}", file=sys.stderr)
             return 1
 
+        matching = _get_matching_archives(available, opts.since, opts.until)
         missing = get_missing_archives(opts.archive_dir, available, opts.since, opts.until)
         print(f"Found {len(available)} archives available")
-        print(f"Found {len(missing)} matching archive(s) not downloaded")
+        print(f"Found {len(matching)} matching archives")
+        print(f"Found {len(missing)} matching archives not downloaded")
         if opts.verbose:
             for filename in missing:
                 print(f"  - {filename}")
@@ -206,7 +211,7 @@ def main(args: list[str] | None = None) -> int:
             print(f"Error: {failed} archive download(s) failed", file=sys.stderr)
             return 1
 
-        ingest_archives(opts.archive_dir, opts.database)
+        ingest_archives(opts.archive_dir, opts.database, filenames=matching)
         return 0
 
     # No command specified, show help

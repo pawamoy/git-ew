@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+from datetime import date
+from typing import TYPE_CHECKING
+
 import pytest
 
 from git_ew import main
-from git_ew._internal import debug
+from git_ew._internal import cli, debug
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_main() -> None:
@@ -50,3 +56,48 @@ def test_show_debug_info(capsys: pytest.CaptureFixture) -> None:
     assert "system" in captured
     assert "environment" in captured
     assert "packages" in captured
+
+
+def test_archive_year_until_includes_end_of_year() -> None:
+    """Interpret a year-only upper bound as the end of that year."""
+    assert cli._parse_archive_date("2026", end_of_year=True) == date(2026, 12, 31)
+
+
+def test_archive_filters_apply_to_ingestion(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Pass only date-matching archives to the ingestion step."""
+    available = {
+        "before.tgz": date(2023, 12, 31),
+        "matching.tgz": date(2024, 6, 1),
+        "after.tgz": date(2025, 1, 1),
+    }
+    ingested_filenames: list[str] = []
+
+    monkeypatch.setattr(cli, "fetch_archive_list", lambda: available)
+    monkeypatch.setattr(cli, "download_archive", lambda _filename, _archive_dir: True)
+
+    def record_ingestion(
+        _archive_dir: Path,
+        _database_url: str,
+        *,
+        filenames: list[str],
+    ) -> tuple[int, int]:
+        ingested_filenames.extend(filenames)
+        return 0, 0
+
+    monkeypatch.setattr(cli, "ingest_archives", record_ingestion)
+
+    result = main(
+        [
+            "ingest",
+            "zsh-workers",
+            "--since",
+            "2024-01-01",
+            "--until",
+            "2024-12-31",
+            "--archive-dir",
+            str(tmp_path),
+        ],
+    )
+
+    assert result == 0
+    assert ingested_filenames == ["matching.tgz"]

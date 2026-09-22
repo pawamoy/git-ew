@@ -1,22 +1,34 @@
 """Archive ingestion module for zsh-workers mailing list archives."""
 
+from __future__ import annotations
+
 import email
 import logging
 import tarfile
-from collections.abc import Iterator
-from datetime import datetime
+from datetime import UTC, datetime
 from email.header import decode_header
-from email.message import Message as EmailMessage
 from pathlib import Path
+from typing import TYPE_CHECKING, Protocol
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from git_ew._internal.database import Database
 from git_ew._internal.email_parser import extract_body_and_patch
 from git_ew._internal.models import Base, Message, Thread
 
-logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable, Iterator
+    from email.message import Message as EmailMessage
+
+    from sqlalchemy.orm import Session
+
+_logger = logging.getLogger(__name__)
+
+
+class _SyncDatabaseProtocol(Protocol):
+    """Describe the synchronous session factory used during ingestion."""
+
+    session_maker: sessionmaker[Session]
 
 
 def decode_email_header(header_value: str) -> str:
@@ -46,8 +58,8 @@ def decode_email_header(header_value: str) -> str:
                 decoded_str = decoded_bytes or ""
             decoded_parts.append(decoded_str)
         return "".join(decoded_parts)
-    except Exception:
-        # Fallback: return original if decoding fails
+    except Exception:  # noqa: BLE001
+        _logger.debug("Could not decode email header %r", header_value, exc_info=True)
         return header_value
 
 
@@ -95,9 +107,8 @@ def extract_emails_from_archive(archive_path: Path) -> Iterator[tuple[str, Email
                         content = f.read()
                         msg = email.message_from_bytes(content)
                         yield (member.name, msg)
-                    except Exception:
-                        # Skip files that can't be parsed as emails
-                        pass
+                    except Exception:  # noqa: BLE001
+                        _logger.debug("Could not parse %s from %s", member.name, archive_path, exc_info=True)
 
 
 def get_email_message_id(msg: EmailMessage) -> str | None:
@@ -190,16 +201,16 @@ def find_email_by_xseq(
                 xseq = get_email_xseq(msg)
                 if xseq == xseq_number:
                     return (msg, xseq)
-        except Exception:
-            # Skip archives that can't be read
+        except Exception:  # noqa: BLE001
+            _logger.debug("Could not search archive %s", archive_path, exc_info=True)
             continue
     return None
 
 
 def ingest_archive(
     archive_path: Path,
-    db: Database,
-    on_email_found: callable | None = None,
+    db: _SyncDatabaseProtocol,
+    on_email_found: Callable[[str, EmailMessage, str], object] | None = None,
 ) -> tuple[int, int]:
     """Ingest emails from an archive into the database.
 
@@ -251,7 +262,7 @@ def ingest_archive(
 
                 date = parsedate_to_datetime(date_str)
             except (TypeError, ValueError):
-                date = datetime.now()
+                date = datetime.now(UTC)
 
             # Try to find or create thread
             # Use the first message in References (original message) as thread root
@@ -290,9 +301,11 @@ def ingest_archive(
 
                         if not thread:
                             # Still no thread, log a warning and create a new thread
-                            logger.warning(
-                                f"Thread first message not available: {intended_thread_root}. "
-                                f"Using earliest available message {message_id} ({date}) as thread root instead.",
+                            _logger.warning(
+                                "Thread first message is unavailable: %s. Using earliest available message %s (%s) as the thread root.",
+                                intended_thread_root,
+                                message_id,
+                                date,
                             )
                             thread_root_id = message_id
 
@@ -342,7 +355,7 @@ def ingest_archive(
 class _SyncDatabase:
     """Synchronous database adapter required by archive ingestion."""
 
-    def __init__(self, session_maker: sessionmaker) -> None:
+    def __init__(self, session_maker: sessionmaker[Session]) -> None:
         self.session_maker = session_maker
 
 
@@ -350,6 +363,7 @@ def ingest_archives(
     archive_dir: Path = Path(".archives"),
     database_url: str = "sqlite:///./git_ew.db",
     *,
+    filenames: Iterable[str] | None = None,
     verbose: bool = True,
 ) -> tuple[int, int]:
     """Ingest all zsh-workers archives in a directory.
@@ -357,7 +371,8 @@ def ingest_archives(
     Args:
         archive_dir: Directory containing ``.tgz`` archives.
         database_url: SQLAlchemy URL for the target database.
-        verbose: Whether to print per-archive progress.
+        filenames: Archive filenames to ingest. Ingest all local archives if omitted.
+        verbose: Whether to log per-archive progress.
 
     Returns:
         A tuple of newly inserted and duplicate message counts.
@@ -365,32 +380,34 @@ def ingest_archives(
     engine = create_engine(database_url)
     Base.metadata.create_all(engine)
     db = _SyncDatabase(sessionmaker(bind=engine))
-    archives = sorted(archive_dir.glob("*.tgz"))
+    if filenames is None:
+        archives = sorted(archive_dir.glob("*.tgz"))
+    else:
+        archives = sorted(archive_dir / filename for filename in filenames)
+        archives = [archive for archive in archives if archive.is_file()]
 
     if verbose:
-        print(f"Found {len(archives)} archives to ingest\n")
+        _logger.info("Found %d archives to ingest", len(archives))
 
     total_inserted = 0
     total_skipped = 0
     for archive_path in archives:
         if verbose:
-            print(f"Ingesting {archive_path.name}...", end=" ", flush=True)
+            _logger.info("Ingesting %s", archive_path.name)
         try:
             inserted, skipped = ingest_archive(archive_path, db)
         except Exception:
             if verbose:
-                print("✗ Error")
+                _logger.exception("Failed to ingest %s", archive_path.name)
             raise
 
         total_inserted += inserted
         total_skipped += skipped
         if verbose:
-            print(f"✓ ({inserted} new, {skipped} skipped)")
+            _logger.info("Ingested %s (%d new, %d skipped)", archive_path.name, inserted, skipped)
 
     if verbose:
-        print(f"\n{'=' * 60}")
-        print(f"Total emails ingested: {total_inserted}")
-        print(f"Total emails skipped (duplicates): {total_skipped}")
-        print(f"{'=' * 60}")
+        _logger.info("Total emails ingested: %d", total_inserted)
+        _logger.info("Total emails skipped as duplicates: %d", total_skipped)
 
     return total_inserted, total_skipped

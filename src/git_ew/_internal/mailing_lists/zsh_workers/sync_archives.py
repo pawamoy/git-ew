@@ -1,14 +1,17 @@
 """Zsh-workers mailing list utilities."""
 
 import argparse
+import logging
 import sys
-from datetime import datetime
+from datetime import date
 from html.parser import HTMLParser
 from pathlib import Path
+from time import strptime
 from urllib.error import URLError
 from urllib.request import urlopen, urlretrieve
 
 BASE_URL = "https://www.zsh.org/mla/zsh-workers/"
+_logger = logging.getLogger(__name__)
 
 
 class LinkExtractor(HTMLParser):
@@ -16,7 +19,7 @@ class LinkExtractor(HTMLParser):
 
     def __init__(self):
         super().__init__()
-        self.archives: dict[str, datetime | None] = {}
+        self.archives: dict[str, date | None] = {}
         self._in_pre = False
         self._current_line = ""
 
@@ -67,19 +70,20 @@ class LinkExtractor(HTMLParser):
                         date_str = date_str.replace("nov.", "Nov")
                         date_str = date_str.replace("déc.", "Dec")
 
-                        parsed = datetime.strptime(date_str, "%d-%b-%Y")
+                        parsed_time = strptime(date_str, "%d-%b-%Y")
+                        parsed = date(parsed_time.tm_year, parsed_time.tm_mon, parsed_time.tm_mday)
                         # Associate this date with the last archived filename found
                         if self.archives:
                             last_filename = list(self.archives.keys())[-1]
                             if self.archives[last_filename] is None:
                                 self.archives[last_filename] = parsed
                     except (ValueError, IndexError):
-                        pass
+                        _logger.debug("Could not parse archive date from %r", part, exc_info=True)
 
             self._current_line = ""
 
 
-def fetch_archive_list() -> dict[str, datetime | None]:
+def fetch_archive_list() -> dict[str, date | None]:
     """Fetch the list of available archives from zsh.org with dates.
 
     Returns:
@@ -100,13 +104,41 @@ def fetch_archive_list() -> dict[str, datetime | None]:
     return dict(sorted(parser.archives.items()))
 
 
+def _get_matching_archives(
+    available_archives: dict[str, date | None],
+    since: date | None = None,
+    until: date | None = None,
+) -> list[str]:
+    """Return archive filenames within the requested date range.
+
+    Args:
+        available_archives: Dict of available archive filenames to dates.
+        since: Only include archives from this date onwards.
+        until: Only include archives up to this date.
+
+    Returns:
+        Archive filenames within the requested date range.
+    """
+    matching = []
+
+    for filename, file_date in available_archives.items():
+        if since is not None and file_date is not None and file_date < since:
+            continue
+        if until is not None and file_date is not None and file_date > until:
+            continue
+
+        matching.append(filename)
+
+    return matching
+
+
 def get_missing_archives(
     archive_dir: Path,
-    available_archives: dict[str, datetime | None],
-    since: datetime | None = None,
-    until: datetime | None = None,
+    available_archives: dict[str, date | None],
+    since: date | None = None,
+    until: date | None = None,
 ) -> list[str]:
-    """Determine which archives need to be downloaded.
+    """Determine which matching archives need to be downloaded.
 
     Args:
         archive_dir: Directory where archives are stored.
@@ -115,24 +147,15 @@ def get_missing_archives(
         until: Only include archives up to this date.
 
     Returns:
-        List of archive filenames that need to be downloaded.
+        Matching archive filenames that do not exist locally.
     """
-    existing = {f.name for f in archive_dir.glob("*.tgz")}
-    missing = []
+    existing = {file.name for file in archive_dir.glob("*.tgz")}
 
-    for filename, file_date in available_archives.items():
-        if filename in existing:
-            continue
-
-        # Filter by date if specified
-        if since is not None and file_date is not None and file_date < since:
-            continue
-        if until is not None and file_date is not None and file_date > until:
-            continue
-
-        missing.append(filename)
-
-    return missing
+    return [
+        filename
+        for filename in _get_matching_archives(available_archives, since, until)
+        if filename not in existing
+    ]
 
 
 def download_archive(filename: str, archive_dir: Path) -> bool:
@@ -149,12 +172,12 @@ def download_archive(filename: str, archive_dir: Path) -> bool:
     output_path = archive_dir / filename
 
     try:
-        print(f"Downloading {filename}...", end=" ", flush=True)
+        _logger.info("Downloading %s", filename)
         urlretrieve(url, output_path)
-        print("✓")
+        _logger.info("Downloaded %s", filename)
         return True
-    except URLError as e:
-        print(f"✗ ({e})")
+    except URLError as error:
+        _logger.error("Failed to download %s: %s", filename, error)
         # Clean up partially downloaded file
         if output_path.exists():
             output_path.unlink()
@@ -163,6 +186,7 @@ def download_archive(filename: str, archive_dir: Path) -> bool:
 
 def main() -> int:
     """Main entry point."""
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     parser = argparse.ArgumentParser(
         description="Sync zsh-workers mailing list archives from zsh.org",
     )
@@ -198,63 +222,57 @@ def main() -> int:
     archive_dir = args.directory
 
     # Parse --since argument
-    since_date: datetime | None = None
+    since_date: date | None = None
     if args.since:
         try:
             if len(args.since) == 4:  # Year only (YYYY)
-                since_date = datetime.strptime(args.since, "%Y")
+                since_date = date(int(args.since), 1, 1)
             else:  # Full date (YYYY-MM-DD)
-                since_date = datetime.strptime(args.since, "%Y-%m-%d")
+                since_date = date.fromisoformat(args.since)
         except ValueError:
-            print(
-                f"Error: Invalid date format '{args.since}'. Use YYYY or YYYY-MM-DD",
-                file=sys.stderr,
-            )
+            _logger.error("Invalid date format %r. Use YYYY or YYYY-MM-DD", args.since)
             return 1
 
     # Create directory if it doesn't exist
     archive_dir.mkdir(parents=True, exist_ok=True)
 
     # Fetch available archives
-    print("Fetching archive list from zsh.org...")
+    _logger.info("Fetching archive list from zsh.org")
     try:
         available = fetch_archive_list()
-    except URLError as e:
-        print(f"Error: {e}", file=sys.stderr)
+    except URLError as error:
+        _logger.error("Failed to fetch archive list: %s", error)
         return 1
 
-    print(f"Found {len(available)} archives available")
+    _logger.info("Found %d archives available", len(available))
 
     # Determine missing archives
     missing = get_missing_archives(archive_dir, available, since_date)
 
     if not missing:
-        print("All requested archives already downloaded!")
+        _logger.info("All requested archives are already downloaded")
         return 0
 
-    print(f"Found {len(missing)} new archive(s) to download")
+    _logger.info("Found %d new archives to download", len(missing))
 
     if args.verbose:
-        print("Missing archives:")
+        _logger.info("Missing archives:")
         for name in missing:
-            print(f"  - {name}")
+            _logger.info("  - %s", name)
 
     if args.dry_run:
-        print("\n(dry-run mode: not downloading)")
+        _logger.info("Dry-run: no archives downloaded")
         return 0
 
-    # Download missing archives
-    print()
     success_count = 0
     for filename in missing:
         if download_archive(filename, archive_dir):
             success_count += 1
 
-    print()
-    print(f"Downloaded {success_count}/{len(missing)} archive(s)")
+    _logger.info("Downloaded %d/%d archives", success_count, len(missing))
 
     if success_count < len(missing):
-        print(f"Warning: {len(missing) - success_count} download(s) failed", file=sys.stderr)
+        _logger.warning("%d archive downloads failed", len(missing) - success_count)
         return 1
 
     return 0
