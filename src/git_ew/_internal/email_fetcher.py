@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import asyncio
+import email
+import imaplib
 import logging
 import mailbox
+from datetime import datetime
+from email import policy
+from email.utils import getaddresses
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from git_ew._internal.email_parser import ParsedEmail, parse_email
+from git_ew._internal.secrets import resolve_password
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -112,6 +118,108 @@ class MboxFetcher(EmailFetcher):
             await asyncio.sleep(0)
 
 
+class IMAPFetcher(EmailFetcher):
+    """Fetch emails from IMAP folders, including Fastmail accounts."""
+
+    def __init__(
+        self,
+        host: str,
+        username: str,
+        password: str,
+        *,
+        port: int = 993,
+        folders: list[str] | None = None,
+        mailing_list: dict[str, list[str]] | None = None,
+    ):
+        """Initialize an IMAP fetcher."""
+        self.host = host
+        self.port = port
+        self.username = username
+        self.password = password
+        self.folders = folders or ["INBOX", "Sent"]
+        self.mailing_list = mailing_list or {}
+
+    async def fetch_emails(self, since: str | None = None) -> AsyncIterator[ParsedEmail]:
+        """Fetch and parse messages from configured IMAP folders."""
+        raw_messages = await asyncio.to_thread(self._fetch_messages, since)
+        for raw_message in raw_messages:
+            try:
+                yield parse_email(raw_message)
+            except Exception as e:  # noqa: BLE001
+                _logger.debug("Skipping malformed IMAP message: %s", e)
+            await asyncio.sleep(0)
+
+    def _fetch_messages(self, since: str | None) -> list[bytes]:
+        """Fetch raw messages using a synchronous IMAP connection."""
+        messages: list[bytes] = []
+        with imaplib.IMAP4_SSL(self.host, self.port) as client:
+            client.login(self.username, self.password)
+            for folder in self.folders:
+                status, _ = client.select(folder, readonly=True)
+                if status != "OK":
+                    raise RuntimeError(f"Unable to select IMAP folder {folder!r}")
+
+                criteria = "ALL"
+                if since:
+                    date = datetime.fromisoformat(since).strftime("%d-%b-%Y")
+                    criteria = f'SINCE {date}'
+                status, data = client.search(None, criteria)
+                if status != "OK":
+                    raise RuntimeError(f"Unable to search IMAP folder {folder!r}")
+
+                for message_number in data[0].split():
+                    if self.mailing_list:
+                        status, fetched = client.fetch(message_number, "(BODY.PEEK[HEADER])")
+                        if status != "OK":
+                            _logger.warning("Unable to fetch headers for message %s from %s", message_number, folder)
+                            continue
+                        headers = b"".join(
+                            item[1] for item in fetched if isinstance(item, tuple) and isinstance(item[1], bytes)
+                        )
+                        if not self._matches_mailing_list(headers):
+                            continue
+
+                    status, fetched = client.fetch(message_number, "(BODY.PEEK[])")
+                    if status != "OK":
+                        _logger.warning("Unable to fetch message %s from %s", message_number, folder)
+                        continue
+                    for item in fetched:
+                        if isinstance(item, tuple) and isinstance(item[1], bytes):
+                            messages.append(item[1])
+        return messages
+
+    def _matches_mailing_list(self, raw_headers: bytes) -> bool:
+        """Return whether headers identify a configured mailing-list message."""
+        message = email.message_from_bytes(raw_headers, policy=policy.default)
+        addresses = {address.lower() for address in self.mailing_list.get("addresses", [])}
+        list_ids = {list_id.lower().strip("<>") for list_id in self.mailing_list.get("list_ids", [])}
+
+        if not addresses and not list_ids:
+            return True
+
+        address_headers = (
+            "To",
+            "Cc",
+            "Delivered-To",
+            "X-Original-To",
+            "Envelope-To",
+            "List-Post",
+        )
+        header_addresses = {
+            address.lower().removeprefix("mailto:")
+            for header in address_headers
+            for _, address in getaddresses(message.get_all(header, []))
+            if address
+        }
+        if addresses.intersection(header_addresses):
+            return True
+
+        return any(
+            list_id in (message.get("List-Id", "").lower().strip("<>"))
+            for list_id in list_ids
+        )
+
+
 class PublicInboxFetcher(EmailFetcher):
     """Fetch emails from a public-inbox archive URL."""
 
@@ -139,11 +247,11 @@ class PublicInboxFetcher(EmailFetcher):
         raise NotImplementedError("Public-inbox fetching not yet implemented")
 
 
-def get_fetcher(source_type: str, config: dict) -> EmailFetcher:
+def get_fetcher(source_type: str, config: dict[str, Any]) -> EmailFetcher:
     """Get an email fetcher based on source type.
 
     Args:
-        source_type: Type of source (maildir, mbox, public-inbox).
+        source_type: Type of source (maildir, mbox, imap, public-inbox).
         config: Configuration for the fetcher.
 
     Returns:
@@ -156,6 +264,15 @@ def get_fetcher(source_type: str, config: dict) -> EmailFetcher:
         return MaildirFetcher(config["path"])
     if source_type == "mbox":
         return MboxFetcher(config["path"])
+    if source_type == "imap":
+        return IMAPFetcher(
+            host=config.get("host", "imap.fastmail.com"),
+            port=int(config.get("port", 993)),
+            username=config["username"],
+            password=resolve_password(config),
+            folders=config.get("folders"),
+            mailing_list=config.get("mailing_list"),
+        )
     if source_type == "public-inbox":
         return PublicInboxFetcher(config["url"])
     raise ValueError(f"Unknown source type: {source_type}")

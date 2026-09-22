@@ -7,6 +7,8 @@ from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 from typing import Any
 
+from git_ew._internal.secrets import resolve_password
+
 
 class EmailSender:
     """Handle sending emails."""
@@ -146,20 +148,13 @@ class EmailSender:
 
 
 def create_email_sender(config: dict[str, Any]) -> EmailSender:
-    """Create an email sender from configuration.
-
-    Args:
-        config: Configuration dictionary with SMTP settings.
-
-    Returns:
-        EmailSender instance.
-    """
+    """Create an email sender with a resolved password."""
     return EmailSender(
         smtp_host=config.get("smtp_host", "localhost"),
         smtp_port=config.get("smtp_port", 587),
         from_email=config["from_email"],
         from_name=config.get("from_name", config["from_email"]),
         username=config.get("username"),
-        password=config.get("password"),
+        password=resolve_password(config),
         use_tls=config.get("use_tls", True),
     )

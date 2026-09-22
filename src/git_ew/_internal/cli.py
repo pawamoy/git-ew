@@ -10,6 +10,7 @@ from typing import Any
 import uvicorn
 
 from git_ew._internal import debug
+from git_ew._internal.config import config_command
 from git_ew._internal.database import Database
 from git_ew._internal.sync import sync_command
 
@@ -64,6 +65,9 @@ def get_parser() -> argparse.ArgumentParser:
     # Sync command
     subparsers.add_parser("sync", help="Sync emails from configured sources")
 
+    # Configuration command
+    subparsers.add_parser("config", help="Configure email accounts and sources")
+
     return parser
 
 
@@ -107,6 +111,10 @@ def main(args: list[str] | None = None) -> int:
     if opts.command == "sync":
         # Sync emails from sources
         return asyncio.run(sync_command())
+
+    if opts.command == "config":
+        asyncio.run(config_command())
+        return 0
 
     # No command specified, show help
     parser.print_help()

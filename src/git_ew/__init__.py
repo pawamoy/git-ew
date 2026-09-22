@@ -27,6 +27,7 @@ from git_ew._internal.cli import get_parser, main
 from git_ew._internal.database import Database
 from git_ew._internal.email_fetcher import (
     EmailFetcher,
+    IMAPFetcher,
     MaildirFetcher,
     MboxFetcher,
     PublicInboxFetcher,
@@ -64,6 +65,7 @@ __all__: list[str] = [
     "EmailFetcher",
     "EmailSender",
     "EmailSource",
+    "IMAPFetcher",
     "MaildirFetcher",
     "MboxFetcher",
     "Message",

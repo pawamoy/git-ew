@@ -63,7 +63,7 @@ git-ew init
 Use the interactive setup wizard:
 
 ```bash
-python scripts/setup.py
+git-ew config
 ```
 
 Or configure manually:
@@ -154,6 +154,10 @@ Access the web interface and click "Sync Emails" to fetch messages from configur
 **Outlook/Office365**: Use regular or app-specific password
 
 **Custom SMTP**: Any server supporting STARTTLS
+
+**Fastmail**: Use a Fastmail app password with mail access enabled. Configure SMTP as
+`smtp.fastmail.com` on port `587` with TLS, and configure an IMAP source using
+`imap.fastmail.com` on port `993` with the folders `INBOX` and `Sent`.
 
 #### Command Line
 
