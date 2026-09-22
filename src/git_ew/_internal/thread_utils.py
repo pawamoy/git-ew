@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import markdown
 from pymdownx.emoji import to_svg, twemoji
@@ -65,29 +65,27 @@ def render_markdown(text: str) -> str:
     return _md.convert(text)
 
 
-def detect_quoted_reply(message: Message) -> None:
-    """Detect and split quoted sections from email body.
+def _split_quoted_reply(body: str) -> tuple[str, str]:
+    """Split trailing quoted lines from an email body.
 
     Args:
-        body: The email body text.
-        parent_body: The parent message body for comparison (if available).
-    """
-    if not message.body:
-        message.body = ("", "")
+        body: Email body text.
 
-    # Starting from end, climb up lines until not quoted
-    lines = message.body.rstrip().splitlines()
+    Returns:
+        The new text and trailing quoted text.
+    """
+    if not body:
+        return "", ""
+
+    lines = body.rstrip().splitlines()
     quote_start_idx = len(lines)
-    while lines[quote_start_idx - 1].startswith(">") and quote_start_idx > 0:
+    while quote_start_idx > 0 and lines[quote_start_idx - 1].startswith(">"):
         quote_start_idx -= 1
 
-    # Split the content
-    if quote_start_idx is not None and quote_start_idx > 0:
-        message.body = (
-            # TODO: Option to render Markdown.
-            "\n".join(lines[:quote_start_idx]).strip(),
-            "\n".join(lines[quote_start_idx:]).strip(),
-        )
+    return (
+        "\n".join(lines[:quote_start_idx]).strip(),
+        "\n".join(lines[quote_start_idx:]).strip(),
+    )
 
 
 @dataclass
@@ -98,6 +96,16 @@ class ThreadNode:
     """The message at this node."""
     children: list[ThreadNode]
     """Child nodes in the thread tree."""
+
+
+@dataclass
+class _RenderedMessage:
+    """Store a message and its presentation-only content."""
+
+    message: Message
+    body: str
+    quoted_body: str
+    children: list[_RenderedMessage]
 
 
 def build_thread_tree(messages: list[Message]) -> list[ThreadNode]:
@@ -129,7 +137,7 @@ def build_thread_tree(messages: list[Message]) -> list[ThreadNode]:
     return roots
 
 
-def thread_to_nested_structure(roots: list[ThreadNode]) -> list[dict[str, Any]]:
+def thread_to_nested_structure(roots: list[ThreadNode]) -> list[_RenderedMessage]:
     """Convert thread tree to nested structure, with single-children popped out to sibling level.
 
     Also detects and marks quoted sections in message bodies.
@@ -140,19 +148,21 @@ def thread_to_nested_structure(roots: list[ThreadNode]) -> list[dict[str, Any]]:
     Returns:
         Nested list of messages.
     """
-    result: list[dict[str, Any]] = []
+    result: list[_RenderedMessage] = []
     for root in roots:
-        detect_quoted_reply(root.message)
+        body, quoted_body = _split_quoted_reply(root.message.body)
+        rendered = _RenderedMessage(
+            message=root.message,
+            body=body,
+            quoted_body=quoted_body,
+            children=[],
+        )
         if len(root.children) == 1:
-            result.append({"message": root.message})
+            result.append(rendered)
             result.extend(thread_to_nested_structure(root.children))
         elif root.children:
-            result.append(
-                {
-                    "message": root.message,
-                    "children": thread_to_nested_structure(root.children),
-                },
-            )
+            rendered.children = thread_to_nested_structure(root.children)
+            result.append(rendered)
         else:
-            result.append({"message": root.message})
+            result.append(rendered)
     return result

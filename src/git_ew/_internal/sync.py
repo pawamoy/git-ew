@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from typing import TypedDict
 
 from git_ew._internal.database import Database
 from git_ew._internal.email_fetcher import get_fetcher
@@ -12,7 +13,18 @@ from git_ew._internal.email_fetcher import get_fetcher
 _logger = logging.getLogger(__name__)
 
 
-async def sync_all_sources(db: Database | None = None) -> dict[str, int | list[str]]:
+class _SyncStats(TypedDict):
+    """Store email synchronization counters and errors."""
+
+    total_sources: int
+    processed_sources: int
+    total_messages: int
+    new_messages: int
+    new_threads: int
+    errors: list[str]
+
+
+async def sync_all_sources(db: Database | None = None) -> _SyncStats:
     """Sync emails from all configured sources.
 
     Args:
@@ -26,7 +38,7 @@ async def sync_all_sources(db: Database | None = None) -> dict[str, int | list[s
         await db.init_db()
 
     sources = await db.get_email_sources()
-    stats = {
+    stats: _SyncStats = {
         "total_sources": len(sources),
         "processed_sources": 0,
         "total_messages": 0,
@@ -44,7 +56,7 @@ async def sync_all_sources(db: Database | None = None) -> dict[str, int | list[s
             fetcher = get_fetcher(source.source_type, config)
 
             source_messages = 0
-            async for parsed_email in fetcher.fetch_emails():  # ty: ignore[not-iterable]
+            async for parsed_email in fetcher.fetch_emails():
                 # Check if message already exists
                 existing = await db.get_message_by_id(parsed_email.message_id)
                 if existing:
@@ -115,8 +127,8 @@ async def sync_command() -> int:
     _logger.info(f"  New messages: {stats['new_messages']}")
 
     if stats["errors"]:
-        _logger.info(f"\n  Errors: {len(stats['errors'])}")  # ty: ignore[invalid-argument-type]
-        for error in stats["errors"]:  # ty: ignore[not-iterable]
+        _logger.info(f"\n  Errors: {len(stats['errors'])}")
+        for error in stats["errors"]:
             _logger.info(f"    - {error}")
 
     return 0 if not stats["errors"] else 1

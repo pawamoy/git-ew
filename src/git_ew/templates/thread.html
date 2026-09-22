@@ -22,11 +22,11 @@
         </div>
     <div class="message-body">
         {# TODO: Option to render Markdown (`|safe`) #}
-        <div class="message-text">{{ item.message.body[0] }}</div>
-        {% if item.message.body[1] %}
+        <div class="message-text">{{ item.body }}</div>
+        {% if item.quoted_body %}
         <details class="quoted-section">
             <summary>Show quoted text</summary>
-            <pre class="quoted-text">{{ item.message.body[1] }}</pre>
+            <pre class="quoted-text">{{ item.quoted_body }}</pre>
         </details>
         {% endif %}
     </div>

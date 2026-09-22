@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from email import policy
 from email.utils import getaddresses
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -27,7 +27,15 @@ from git_ew._internal.thread_utils import build_thread_tree, thread_to_nested_st
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-    from git_ew._internal.models import Message
+
+class _ReplySource(Protocol):
+    """Provide the message fields needed to prepare a reply."""
+
+    @property
+    def message_id(self) -> str: ...
+
+    @property
+    def raw_email(self) -> str | None: ...
 
 # Global database instance
 db: Database | None = None
@@ -79,7 +87,7 @@ class ThreadUpdate(BaseModel):
 
 
 def _reply_all_metadata(
-    message: Message,
+    message: _ReplySource,
     thread_root_id: str,
     own_addresses: set[str],
 ) -> tuple[str, list[str], list[str]]:
@@ -125,9 +133,9 @@ async def index(request: Request) -> HTMLResponse:
     assert db is not None  # noqa: S101
     threads = await db.get_threads()
     return templates.TemplateResponse(
+        request,
         "index.html",
         {
-            "request": request,
             "threads": threads,
         },
     )
@@ -155,9 +163,9 @@ async def view_thread(request: Request, thread_id: int, *, flatten: bool = True)
     nested_messages = thread_to_nested_structure(tree)
 
     return templates.TemplateResponse(
+        request,
         "thread.html",
         {
-            "request": request,
             "thread": thread,
             "messages": nested_messages,
         },

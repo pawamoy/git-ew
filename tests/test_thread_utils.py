@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from git_ew._internal.models import Message
-from git_ew._internal.thread_utils import build_thread_tree
+from git_ew._internal.thread_utils import build_thread_tree, thread_to_nested_structure
 
 
 def test_build_simple_thread_tree() -> None:
@@ -85,3 +85,25 @@ def test_build_branching_thread_tree() -> None:
 
     assert len(tree) == 1
     assert len(tree[0].children) == 2
+
+
+def test_rendering_splits_quotes_without_mutating_message() -> None:
+    """Keep stored message bodies unchanged while preparing the thread view."""
+    original_body = "New reply\n\n> Earlier message"
+    message = Message(
+        id=1,
+        message_id="msg1",
+        thread_id=1,
+        from_email="user@example.com",
+        from_name="User",
+        subject="Test",
+        date=datetime.now(UTC),
+        body=original_body,
+        in_reply_to=None,
+    )
+
+    rendered = thread_to_nested_structure(build_thread_tree([message]))
+
+    assert message.body == original_body
+    assert rendered[0].body == "New reply"
+    assert rendered[0].quoted_body == "> Earlier message"

@@ -1,13 +1,21 @@
 """Tests for Reply All metadata construction."""
 
-from types import SimpleNamespace
+from dataclasses import dataclass
 
 from git_ew._internal.app import _reply_all_metadata
 
 
+@dataclass
+class _ReplyMessage:
+    """Store the message fields used to build reply metadata."""
+
+    message_id: str
+    raw_email: str
+
+
 def test_reply_all_preserves_list_and_reference_chain() -> None:
     """Build recipients and references from the original message headers."""
-    message = SimpleNamespace(
+    message = _ReplyMessage(
         message_id="reply@example.com",
         raw_email="""\
 From: author@example.com

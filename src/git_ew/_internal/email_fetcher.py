@@ -5,7 +5,7 @@ import email
 import imaplib
 import logging
 import mailbox
-from datetime import datetime
+from datetime import date
 from email import policy
 from email.utils import getaddresses
 from pathlib import Path
@@ -23,7 +23,7 @@ _logger = logging.getLogger(__name__)
 class EmailFetcher:
     """Base class for email fetchers."""
 
-    async def fetch_emails(self, since: str | None = None) -> AsyncIterator[ParsedEmail]:
+    def fetch_emails(self, since: str | None = None) -> AsyncIterator[ParsedEmail]:
         """Fetch emails from the source.
 
         Args:
@@ -47,7 +47,7 @@ class MaildirFetcher(EmailFetcher):
         self.maildir_path = Path(maildir_path)
         """Path to the Maildir directory."""
 
-    async def fetch_emails(self, since: str | None = None) -> AsyncIterator[ParsedEmail]:  # noqa: ARG002  # ty: ignore[invalid-method-override]
+    async def fetch_emails(self, since: str | None = None) -> AsyncIterator[ParsedEmail]:  # noqa: ARG002
         """Fetch emails from Maildir.
 
         Args:
@@ -61,20 +61,21 @@ class MaildirFetcher(EmailFetcher):
 
         # Use mailbox.Maildir to read the maildir
         mbox = mailbox.Maildir(str(self.maildir_path))
+        try:
+            for message in mbox:
+                try:
+                    raw = message.as_bytes()
+                    parsed = parse_email(raw)
+                    yield parsed
+                except Exception as e:  # noqa: BLE001
+                    # Skip malformed emails
+                    _logger.debug("Skipping malformed Maildir message: %s", e)
+                    continue
 
-        for key in mbox:
-            try:
-                msg = mbox.get_message(key)  # ty: ignore[invalid-argument-type]
-                raw = msg.as_bytes()
-                parsed = parse_email(raw)
-                yield parsed
-            except Exception as e:  # noqa: BLE001
-                # Skip malformed emails
-                _logger.debug(f"Skipping malformed email {key}: {e}")
-                continue
-
-            # Allow event loop to process
-            await asyncio.sleep(0)
+                # Allow event loop to process
+                await asyncio.sleep(0)
+        finally:
+            mbox.close()
 
 
 class MboxFetcher(EmailFetcher):
@@ -89,7 +90,7 @@ class MboxFetcher(EmailFetcher):
         self.mbox_path = Path(mbox_path)
         """Path to the mbox file."""
 
-    async def fetch_emails(self, since: str | None = None) -> AsyncIterator[ParsedEmail]:  # noqa: ARG002  # ty: ignore[invalid-method-override]
+    async def fetch_emails(self, since: str | None = None) -> AsyncIterator[ParsedEmail]:  # noqa: ARG002
         """Fetch emails from mbox.
 
         Args:
@@ -102,20 +103,21 @@ class MboxFetcher(EmailFetcher):
             return
 
         mbox = mailbox.mbox(str(self.mbox_path))
+        try:
+            for message in mbox:
+                try:
+                    raw = message.as_bytes()
+                    parsed = parse_email(raw)
+                    yield parsed
+                except Exception as e:  # noqa: BLE001
+                    # Skip malformed emails
+                    _logger.debug("Skipping malformed mbox message: %s", e)
+                    continue
 
-        for key in mbox:
-            try:
-                msg = mbox.get_message(key)  # ty: ignore[invalid-argument-type]
-                raw = msg.as_bytes()
-                parsed = parse_email(raw)
-                yield parsed
-            except Exception as e:  # noqa: BLE001
-                # Skip malformed emails
-                _logger.debug(f"Skipping malformed email {key}: {e}")
-                continue
-
-            # Allow event loop to process
-            await asyncio.sleep(0)
+                # Allow event loop to process
+                await asyncio.sleep(0)
+        finally:
+            mbox.close()
 
 
 class IMAPFetcher(EmailFetcher):
@@ -161,8 +163,8 @@ class IMAPFetcher(EmailFetcher):
 
                 criteria = "ALL"
                 if since:
-                    date = datetime.fromisoformat(since).strftime("%d-%b-%Y")
-                    criteria = f"SINCE {date}"
+                    since_date = date.fromisoformat(since).strftime("%d-%b-%Y")
+                    criteria = f"SINCE {since_date}"
                 status, data = client.search(None, criteria)
                 if status != "OK":
                     raise RuntimeError(f"Unable to search IMAP folder {folder!r}")
@@ -229,7 +231,7 @@ class PublicInboxFetcher(EmailFetcher):
         self.archive_url = archive_url.rstrip("/")
         """Base URL of the public-inbox archive."""
 
-    async def fetch_emails(self, since: str | None = None) -> AsyncIterator[ParsedEmail]:
+    def fetch_emails(self, since: str | None = None) -> AsyncIterator[ParsedEmail]:
         """Fetch emails from public-inbox archive.
 
         Args:
