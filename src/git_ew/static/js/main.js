@@ -22,8 +22,12 @@ async function syncEmails() {
 
         if (response.ok) {
             const data = await response.json();
-            alert(`Successfully synced ${data.synced} emails`);
-            location.reload();
+            if (data.success) {
+                alert(`Successfully synced ${data.synced} emails`);
+                location.reload();
+            } else {
+                alert('Sync failed: ' + (data.errors || ['Unknown error']).join('\n'));
+            }
         } else {
             const error = await response.json();
             alert('Sync failed: ' + (error.detail || 'Unknown error'));

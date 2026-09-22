@@ -20,9 +20,9 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from git_ew._internal.database import Database
-from git_ew._internal.email_fetcher import get_fetcher
 from git_ew._internal.email_sender import append_sent_message, create_email_sender
 from git_ew._internal.models import Message
+from git_ew._internal.sync import sync_all_sources
 from git_ew._internal.thread_utils import build_thread_tree, thread_to_nested_structure
 
 if TYPE_CHECKING:
@@ -313,60 +313,13 @@ async def sync_emails() -> JSONResponse:
         JSON response with sync results.
     """
     assert db is not None  # noqa: S101
-    sources = await db.get_email_sources()
-    total_synced = 0
-
-    for source in sources:
-        if not source.enabled:
-            continue
-
-        try:
-            config = json.loads(source.config)
-            fetcher = get_fetcher(source.source_type, config)
-
-            async for parsed_email in fetcher.fetch_emails():  # ty: ignore[not-iterable]
-                # Check if message already exists
-                existing = await db.get_message_by_id(parsed_email.message_id)
-                if existing:
-                    continue
-
-                # Find or create thread
-                thread_id_str = parsed_email.get_thread_id()
-                thread = await db.get_thread_by_message_id(thread_id_str)
-
-                if not thread:
-                    # Create new thread
-                    thread = await db.create_thread(
-                        subject=parsed_email.clean_subject,
-                        first_message_id=thread_id_str,
-                        is_patch=parsed_email.is_patch,
-                    )
-
-                # Create message
-                await db.create_message(
-                    message_id=parsed_email.message_id,
-                    thread_id=thread.id,
-                    from_email=parsed_email.from_email,
-                    from_name=parsed_email.from_name,
-                    subject=parsed_email.subject,
-                    date=parsed_email.date,
-                    body=parsed_email.body,
-                    in_reply_to=parsed_email.in_reply_to,
-                    is_patch=parsed_email.is_patch,
-                    patch_content=parsed_email.patch_content,
-                    raw_email=parsed_email.raw,
-                )
-
-                total_synced += 1
-
-        except Exception:  # noqa: BLE001, S112
-            # Log error but continue with other sources
-            continue
+    stats = await sync_all_sources(db)
 
     return JSONResponse(
         content={
-            "success": True,
-            "synced": total_synced,
+            "success": not stats["errors"],
+            "synced": stats["new_messages"],
+            "errors": stats["errors"],
         },
     )
 
