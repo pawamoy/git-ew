@@ -17,16 +17,13 @@
 """Tests for zsh-workers archive ingestion."""
 
 from email import message_from_string
+from pathlib import Path
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
 
 import pytest
 
 from git_ew._internal.email_parser import extract_body_and_patch
 from git_ew._internal.mailing_lists.zsh_workers import ingest
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 def test_extract_mime_patch_attachment() -> None:

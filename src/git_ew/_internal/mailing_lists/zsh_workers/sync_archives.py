@@ -64,7 +64,7 @@ class LinkExtractor(HTMLParser):
 
         # Look for date patterns in the line (DD-MMM-YYYY format)
         # Example: "12-Jun-1995"
-        if len(self._current_line) > 50:  # Approximate line length
+        if len(self._current_line) > 50:  # Approximate line length  # noqa: PLR2004
             parts = self._current_line.split()
             for i, part in enumerate(parts):
                 # Try to parse date from parts
@@ -187,15 +187,16 @@ def download_archive(filename: str, archive_dir: Path) -> bool:
 
     try:
         _logger.info("Downloading %s", filename)
-        urlretrieve(url, output_path)
+        urlretrieve(url, output_path)  # noqa: S310
         _logger.info("Downloaded %s", filename)
-        return True
     except URLError as error:
-        _logger.error("Failed to download %s: %s", filename, error)
+        _logger.error("Failed to download %s: %s", filename, error)  # noqa: TRY400
         # Clean up partially downloaded file
         if output_path.exists():
             output_path.unlink()
         return False
+    else:
+        return True
 
 
 def main() -> int:
@@ -239,12 +240,13 @@ def main() -> int:
     since_date: date | None = None
     if args.since:
         try:
-            if len(args.since) == 4:  # Year only (YYYY)
-                since_date = date(int(args.since), 1, 1)
-            else:  # Full date (YYYY-MM-DD)
-                since_date = date.fromisoformat(args.since)
+            since_date = (
+                date(int(args.since), 1, 1)
+                if len(args.since) == 4  # noqa: PLR2004
+                else date.fromisoformat(args.since)
+            )
         except ValueError:
-            _logger.error("Invalid date format %r. Use YYYY or YYYY-MM-DD", args.since)
+            _logger.error("Invalid date format %r. Use YYYY or YYYY-MM-DD", args.since)  # noqa: TRY400
             return 1
 
     # Create directory if it doesn't exist
@@ -255,7 +257,7 @@ def main() -> int:
     try:
         available = fetch_archive_list()
     except URLError as error:
-        _logger.error("Failed to fetch archive list: %s", error)
+        _logger.error("Failed to fetch archive list: %s", error)  # noqa: TRY400
         return 1
 
     _logger.info("Found %d archives available", len(available))

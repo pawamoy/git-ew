@@ -119,11 +119,9 @@ def _format_debug_info() -> str:
         f"- __Python__: {info.interpreter_name} {info.interpreter_version} ({info.interpreter_path})",
         "- __Environment variables__:",
     ]
-    for var in info.variables:
-        lines.append(f"  - `{var.name}`: `{var.value}`")
+    lines.extend(f"  - `{var.name}`: `{var.value}`" for var in info.variables)
     lines.append("- __Installed packages__:")
-    for pkg in info.packages:
-        lines.append(f"  - `{pkg.name}` v{pkg.version}")
+    lines.extend(f"  - `{pkg.name}` v{pkg.version}" for pkg in info.packages)
     return "\n".join(lines)
 
 

@@ -1,9 +1,28 @@
+# SPDX-License-Identifier: ISC
+#
+# ISC License
+#
+# Copyright (c) 2026, Timothée Mazzucotelli and contributors
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 """Interactive git-ew configuration wizard."""
 
 from __future__ import annotations
 
 import json
 import logging
+from asyncio import to_thread
 from getpass import getpass
 from typing import Any
 
@@ -26,15 +45,8 @@ def _prompt_password_config() -> dict[str, str]:
     raise ValueError("password storage must be 1 or 2")
 
 
-async def config_command() -> None:
-    """Configure email delivery and ingestion sources interactively."""
-    _logger.info("=== git-ew Configuration Wizard ===")
-
-    db = Database()
-    _logger.info("Initializing database")
-    await db.init_db()
-    _logger.info("Database initialized")
-
+def _prompt_email_config() -> dict[str, Any]:
+    """Collect email delivery settings from the terminal."""
     _logger.info("Email Configuration (for sending replies)")
     _logger.info("-" * 50)
     smtp_host = input("SMTP Host (e.g., smtp.fastmail.com): ").strip()
@@ -53,9 +65,11 @@ async def config_command() -> None:
         "use_tls": use_tls,
         **_prompt_password_config(),
     }
-    await db.set_config("email_config", email_config)
-    _logger.info("Email configuration saved")
+    return email_config
 
+
+def _prompt_email_source() -> EmailSource | None:
+    """Collect an email source from the terminal."""
     _logger.info("Email Source Configuration")
     _logger.info("-" * 50)
     _logger.info("Where should git-ew fetch emails from?")
@@ -105,6 +119,26 @@ async def config_command() -> None:
         )
     else:
         _logger.info("Skipped email source configuration")
+        return None
+
+    return source
+
+
+async def config_command() -> None:
+    """Configure email delivery and ingestion sources interactively."""
+    _logger.info("=== git-ew Configuration Wizard ===")
+
+    db = Database()
+    _logger.info("Initializing database")
+    await db.init_db()
+    _logger.info("Database initialized")
+
+    email_config = await to_thread(_prompt_email_config)
+    await db.set_config("email_config", email_config)
+    _logger.info("Email configuration saved")
+
+    source = await to_thread(_prompt_email_source)
+    if source is None:
         return
 
     async with db.session() as session:

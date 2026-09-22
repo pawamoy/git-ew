@@ -38,7 +38,7 @@ def resolve_password(config: dict[str, Any], *, required: bool = True) -> str | 
     """
     command = config.get("password_command")
     if command:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             shlex.split(command),
             check=True,
             capture_output=True,

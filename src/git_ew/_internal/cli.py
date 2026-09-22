@@ -65,7 +65,7 @@ class _DebugInfo(argparse.Action):
 def _parse_archive_date(value: str, *, end_of_year: bool = False) -> date:
     """Parse a CLI archive date."""
     try:
-        if len(value) == 4:
+        if len(value) == 4:  # noqa: PLR2004
             year = int(value)
             if end_of_year:
                 return date(year, 12, 31)

@@ -1,3 +1,21 @@
+# SPDX-License-Identifier: ISC
+#
+# ISC License
+#
+# Copyright (c) 2026, Timothée Mazzucotelli and contributors
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 """Archive ingestion module for zsh-workers mailing list archives."""
 
 from __future__ import annotations
@@ -5,8 +23,10 @@ from __future__ import annotations
 import email
 import logging
 import tarfile
+from contextlib import suppress
 from datetime import UTC, datetime
 from email.header import decode_header
+from email.utils import parseaddr, parsedate_to_datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
@@ -72,8 +92,6 @@ def parse_email_address(from_header: str) -> tuple[str, str]:
     Returns:
         Tuple of (name, email).
     """
-    from email.utils import parseaddr
-
     # parseaddr handles both "Name <email>" and "email" formats
     name, email = parseaddr(from_header)
 
@@ -174,7 +192,7 @@ def get_email_xseq(msg: EmailMessage) -> int | None:
     if xseq:
         # Format is typically "zsh-workers 44316"
         parts = xseq.strip().split()
-        if len(parts) >= 2:
+        if len(parts) >= 2:  # noqa: PLR2004
             try:
                 return int(parts[-1])  # Last part should be the number
             except ValueError:
@@ -258,8 +276,6 @@ def ingest_archive(
 
             # Parse date
             try:
-                from email.utils import parsedate_to_datetime
-
                 date = parsedate_to_datetime(date_str)
             except (TypeError, ValueError):
                 date = datetime.now(UTC)
@@ -324,11 +340,9 @@ def ingest_archive(
             else:
                 # Thread already exists, update its updated_at to the latest message date
                 # Handle timezone-aware and naive datetimes safely
-                try:
+                # Aware and naive dates cannot be compared.
+                with suppress(TypeError):
                     thread.updated_at = max(thread.updated_at, date)
-                except TypeError:
-                    # Can't compare aware and naive datetimes, skip the update
-                    pass
 
             # Create message record
             message = Message(

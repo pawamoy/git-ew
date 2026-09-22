@@ -103,6 +103,39 @@ def test_build_branching_thread_tree() -> None:
     assert len(tree[0].children) == 2
 
 
+def test_rendering_keeps_linear_replies_nested_when_flatten_is_false() -> None:
+    """Keep a single reply under its parent when flattening is disabled."""
+    parent = Message(
+        id=1,
+        message_id="parent",
+        thread_id=1,
+        from_email="parent@example.com",
+        from_name="Parent",
+        subject="Test",
+        date=datetime.now(UTC),
+        body="First message",
+        in_reply_to=None,
+    )
+    reply = Message(
+        id=2,
+        message_id="reply",
+        thread_id=1,
+        from_email="reply@example.com",
+        from_name="Reply",
+        subject="Re: Test",
+        date=datetime.now(UTC),
+        body="Second message",
+        in_reply_to="parent",
+    )
+
+    rendered = thread_to_nested_structure(build_thread_tree([parent, reply]), flatten=False)
+
+    assert len(rendered) == 1
+    assert rendered[0].message.message_id == "parent"
+    assert len(rendered[0].children) == 1
+    assert rendered[0].children[0].message.message_id == "reply"
+
+
 def test_rendering_splits_quotes_without_mutating_message() -> None:
     """Keep stored message bodies unchanged while preparing the thread view."""
     original_body = "New reply\n\n> Earlier message"

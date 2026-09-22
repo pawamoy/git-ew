@@ -1,3 +1,21 @@
+# SPDX-License-Identifier: ISC
+#
+# ISC License
+#
+# Copyright (c) 2026, Timothée Mazzucotelli and contributors
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 # Email sending functionality for git-ew.
 
 from __future__ import annotations
@@ -52,7 +70,7 @@ class EmailSender:
         self.use_tls = use_tls
         """Whether to use TLS."""
 
-    def send_email(
+    def send_email(  # noqa: PLR0917
         self,
         to_email: str,
         subject: str,
@@ -78,7 +96,7 @@ class EmailSender:
         self.send_message(msg)
         return msg["Message-ID"].strip("<>")
 
-    def build_email(
+    def build_email(  # noqa: PLR0917
         self,
         to_email: str,
         subject: str,
@@ -120,7 +138,7 @@ class EmailSender:
 
             smtp.send_message(msg)
 
-    def send_reply(
+    def send_reply(  # noqa: PLR0917
         self,
         to_email: str,
         subject: str,
@@ -146,7 +164,7 @@ class EmailSender:
         self.send_message(msg)
         return msg["Message-ID"].strip("<>")
 
-    def build_reply(
+    def build_reply(  # noqa: PLR0917
         self,
         to_email: str,
         subject: str,

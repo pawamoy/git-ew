@@ -153,13 +153,14 @@ def build_thread_tree(messages: list[Message]) -> list[ThreadNode]:
     return roots
 
 
-def thread_to_nested_structure(roots: list[ThreadNode]) -> list[_RenderedMessage]:
+def thread_to_nested_structure(roots: list[ThreadNode], *, flatten: bool = True) -> list[_RenderedMessage]:
     """Convert thread tree to nested structure, with single-children popped out to sibling level.
 
     Also detects and marks quoted sections in message bodies.
 
     Args:
         roots: List of root ThreadNodes.
+        flatten: Place a sole child beside its parent when true.
 
     Returns:
         Nested list of messages.
@@ -173,11 +174,11 @@ def thread_to_nested_structure(roots: list[ThreadNode]) -> list[_RenderedMessage
             quoted_body=quoted_body,
             children=[],
         )
-        if len(root.children) == 1:
+        if flatten and len(root.children) == 1:
             result.append(rendered)
-            result.extend(thread_to_nested_structure(root.children))
+            result.extend(thread_to_nested_structure(root.children, flatten=flatten))
         elif root.children:
-            rendered.children = thread_to_nested_structure(root.children)
+            rendered.children = thread_to_nested_structure(root.children, flatten=flatten)
             result.append(rendered)
         else:
             result.append(rendered)
