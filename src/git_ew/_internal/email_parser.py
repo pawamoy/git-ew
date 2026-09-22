@@ -6,8 +6,11 @@ import email
 import re
 from datetime import UTC, datetime
 from email import policy
-from email.message import Message
 from email.utils import parseaddr, parsedate_to_datetime
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from email.message import Message
 
 
 class ParsedEmail:
@@ -193,8 +196,13 @@ def extract_body_and_patch(message: Message) -> tuple[str, str | None]:
         filename = (part.get_filename() or "").lower()
         content = _decode_part_payload(part)
 
-        if content_type in {"text/x-patch", "text/x-diff", "application/x-patch", "application/x-diff"} or filename.endswith(
-            (".patch", ".diff")
+        if content_type in {
+            "text/x-patch",
+            "text/x-diff",
+            "application/x-patch",
+            "application/x-diff",
+        } or filename.endswith(
+            (".patch", ".diff"),
         ):
             if patch_content is None:
                 patch_content = content

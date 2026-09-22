@@ -5,9 +5,8 @@ import sys
 from datetime import datetime
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.request import urlopen, urlretrieve
 from urllib.error import URLError
-
+from urllib.request import urlopen, urlretrieve
 
 BASE_URL = "https://www.zsh.org/mla/zsh-workers/"
 
@@ -91,7 +90,7 @@ def fetch_archive_list() -> dict[str, datetime | None]:
     """
     try:
         with urlopen(BASE_URL) as response:
-            html = response.read().decode('utf-8')
+            html = response.read().decode("utf-8")
     except URLError as e:
         raise URLError(f"Failed to fetch {BASE_URL}: {e}") from e
 
@@ -165,7 +164,7 @@ def download_archive(filename: str, archive_dir: Path) -> bool:
 def main() -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Sync zsh-workers mailing list archives from zsh.org"
+        description="Sync zsh-workers mailing list archives from zsh.org",
     )
     parser.add_argument(
         "-d",
@@ -208,8 +207,7 @@ def main() -> int:
                 since_date = datetime.strptime(args.since, "%Y-%m-%d")
         except ValueError:
             print(
-                f"Error: Invalid date format '{args.since}'. "
-                "Use YYYY or YYYY-MM-DD",
+                f"Error: Invalid date format '{args.since}'. Use YYYY or YYYY-MM-DD",
                 file=sys.stderr,
             )
             return 1

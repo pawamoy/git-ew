@@ -21,12 +21,13 @@ from pydantic import BaseModel
 
 from git_ew._internal.database import Database
 from git_ew._internal.email_sender import append_sent_message, create_email_sender
-from git_ew._internal.models import Message
 from git_ew._internal.sync import sync_all_sources
 from git_ew._internal.thread_utils import build_thread_tree, thread_to_nested_structure
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+
+    from git_ew._internal.models import Message
 
 # Global database instance
 db: Database | None = None
@@ -92,11 +93,7 @@ def _reply_all_metadata(
             for header in headers
             for value in parsed.get_all(header, [])
         ]
-        return [
-            address.lower()
-            for _, address in getaddresses(values)
-            if address
-        ]
+        return [address.lower() for _, address in getaddresses(values) if address]
 
     reply_targets = addresses("Reply-To") or addresses("From")
     original_recipients = addresses("To", "Cc", "List-Post")
@@ -192,9 +189,7 @@ async def post_comment(thread_id: int, comment: CommentCreate) -> JSONResponse:
     sender = create_email_sender(email_config)
 
     own_addresses = {
-        address.lower()
-        for address in (email_config.get("from_email"), email_config.get("username"))
-        if address
+        address.lower() for address in (email_config.get("from_email"), email_config.get("username")) if address
     }
 
     # Determine Reply All recipients and references.

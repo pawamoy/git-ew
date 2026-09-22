@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import smtplib
 import imaplib
+import smtplib
+from datetime import datetime
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
-from datetime import datetime
 from typing import Any
 
 from git_ew._internal.secrets import resolve_password

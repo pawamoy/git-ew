@@ -78,13 +78,9 @@ async def config_command() -> None:
         )
     elif choice == "3":
         folders = input("Folders (comma-separated, default: INBOX,Sent): ").strip() or "INBOX,Sent"
-        addresses = (
-            input("Mailing-list addresses (default: zsh-workers@zsh.org): ").strip()
-            or "zsh-workers@zsh.org"
-        )
+        addresses = input("Mailing-list addresses (default: zsh-workers@zsh.org): ").strip() or "zsh-workers@zsh.org"
         list_ids = (
-            input("Mailing-list List-Id values (default: zsh-workers.zsh.org): ").strip()
-            or "zsh-workers.zsh.org"
+            input("Mailing-list List-Id values (default: zsh-workers.zsh.org): ").strip() or "zsh-workers.zsh.org"
         )
         source = EmailSource(
             name=input("Source name (e.g., 'fastmail'): ").strip(),
@@ -100,7 +96,7 @@ async def config_command() -> None:
                         "list_ids": [list_id.strip().lower() for list_id in list_ids.split(",") if list_id.strip()],
                     },
                     **_prompt_password_config(),
-                }
+                },
             ),
             enabled=True,
         )

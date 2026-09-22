@@ -3,17 +3,17 @@
 import email
 import logging
 import tarfile
+from collections.abc import Iterator
 from datetime import datetime
 from email.header import decode_header
 from email.message import Message as EmailMessage
 from pathlib import Path
-from typing import Iterator
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from git_ew._internal.email_parser import extract_body_and_patch
 from git_ew._internal.database import Database
+from git_ew._internal.email_parser import extract_body_and_patch
 from git_ew._internal.models import Base, Message, Thread
 
 logger = logging.getLogger(__name__)
@@ -186,7 +186,7 @@ def find_email_by_xseq(
     """
     for archive_path in sorted(archive_dir.glob("*.tgz")):
         try:
-            for filename, msg in extract_emails_from_archive(archive_path):
+            for _filename, msg in extract_emails_from_archive(archive_path):
                 xseq = get_email_xseq(msg)
                 if xseq == xseq_number:
                     return (msg, xseq)
@@ -199,7 +199,7 @@ def find_email_by_xseq(
 def ingest_archive(
     archive_path: Path,
     db: Database,
-    on_email_found: callable = None,
+    on_email_found: callable | None = None,
 ) -> tuple[int, int]:
     """Ingest emails from an archive into the database.
 
@@ -248,6 +248,7 @@ def ingest_archive(
             # Parse date
             try:
                 from email.utils import parsedate_to_datetime
+
                 date = parsedate_to_datetime(date_str)
             except (TypeError, ValueError):
                 date = datetime.now()
@@ -291,7 +292,7 @@ def ingest_archive(
                             # Still no thread, log a warning and create a new thread
                             logger.warning(
                                 f"Thread first message not available: {intended_thread_root}. "
-                                f"Using earliest available message {message_id} ({date}) as thread root instead."
+                                f"Using earliest available message {message_id} ({date}) as thread root instead.",
                             )
                             thread_root_id = message_id
 
@@ -300,19 +301,18 @@ def ingest_archive(
                     thread = Thread(
                         subject=subject,
                         first_message_id=thread_root_id,
-                    created_at=date,
-                    updated_at=date,
-                    is_patch="patch" in subject.lower(),
-                    status="open",
-                )
+                        created_at=date,
+                        updated_at=date,
+                        is_patch="patch" in subject.lower(),
+                        status="open",
+                    )
                 session.add(thread)
                 session.flush()  # Ensure thread has an ID
             else:
                 # Thread already exists, update its updated_at to the latest message date
                 # Handle timezone-aware and naive datetimes safely
                 try:
-                    if date > thread.updated_at:
-                        thread.updated_at = date
+                    thread.updated_at = max(thread.updated_at, date)
                 except TypeError:
                     # Can't compare aware and naive datetimes, skip the update
                     pass

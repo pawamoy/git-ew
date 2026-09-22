@@ -28,7 +28,7 @@ diff --git a/file b/file
 -old
 +new
 --boundary--
-"""
+""",
     )
 
     body, patch_content = extract_body_and_patch(msg)

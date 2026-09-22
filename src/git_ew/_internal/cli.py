@@ -44,7 +44,7 @@ def _parse_archive_date(value: str, *, end_of_year: bool = False) -> datetime:
         return datetime.strptime(value, "%Y-%m-%d")
     except ValueError as error:
         raise argparse.ArgumentTypeError(
-            f"invalid date {value!r}; use YYYY or YYYY-MM-DD"
+            f"invalid date {value!r}; use YYYY or YYYY-MM-DD",
         ) from error
 
 

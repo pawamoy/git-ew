@@ -162,7 +162,7 @@ class IMAPFetcher(EmailFetcher):
                 criteria = "ALL"
                 if since:
                     date = datetime.fromisoformat(since).strftime("%d-%b-%Y")
-                    criteria = f'SINCE {date}'
+                    criteria = f"SINCE {date}"
                 status, data = client.search(None, criteria)
                 if status != "OK":
                     raise RuntimeError(f"Unable to search IMAP folder {folder!r}")
@@ -214,10 +214,7 @@ class IMAPFetcher(EmailFetcher):
         if addresses.intersection(header_addresses):
             return True
 
-        return any(
-            list_id in (message.get("List-Id", "").lower().strip("<>"))
-            for list_id in list_ids
-        )
+        return any(list_id in (message.get("List-Id", "").lower().strip("<>")) for list_id in list_ids)
 
 
 class PublicInboxFetcher(EmailFetcher):

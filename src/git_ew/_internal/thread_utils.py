@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
-from difflib import SequenceMatcher
 from typing import TYPE_CHECKING, Any
 
 import markdown
-from pymdownx.emoji import twemoji, to_svg
+from pymdownx.emoji import to_svg, twemoji
 
 if TYPE_CHECKING:
     from git_ew._internal.models import Message
@@ -149,10 +147,12 @@ def thread_to_nested_structure(roots: list[ThreadNode]) -> list[dict[str, Any]]:
             result.append({"message": root.message})
             result.extend(thread_to_nested_structure(root.children))
         elif root.children:
-            result.append({
-                "message": root.message,
-                "children": thread_to_nested_structure(root.children),
-            })
+            result.append(
+                {
+                    "message": root.message,
+                    "children": thread_to_nested_structure(root.children),
+                },
+            )
         else:
             result.append({"message": root.message})
     return result

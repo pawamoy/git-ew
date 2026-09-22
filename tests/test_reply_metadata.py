@@ -17,7 +17,7 @@ List-Post: <mailto:zsh-workers@zsh.org>
 References: <root@example.com> <parent@example.com>
 Message-ID: <reply@example.com>
 
-"""
+""",
     )
 
     to_email, cc, references = _reply_all_metadata(message, "root@example.com", {"contact@pawamoy.fr"})
