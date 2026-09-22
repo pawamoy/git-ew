@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 import os
 import platform
 import sys
 from dataclasses import dataclass
 from importlib import metadata
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -90,18 +93,22 @@ def _get_debug_info() -> _Environment:
     )
 
 
-def _print_debug_info() -> None:
-    """Print debug/environment information."""
+def _format_debug_info() -> str:
+    """Format debug and environment information as Markdown."""
     info = _get_debug_info()
-    print(f"- __System__: {info.platform}")
-    print(f"- __Python__: {info.interpreter_name} {info.interpreter_version} ({info.interpreter_path})")
-    print("- __Environment variables__:")
+    lines = [
+        f"- __System__: {info.platform}",
+        f"- __Python__: {info.interpreter_name} {info.interpreter_version} ({info.interpreter_path})",
+        "- __Environment variables__:",
+    ]
     for var in info.variables:
-        print(f"  - `{var.name}`: `{var.value}`")
-    print("- __Installed packages__:")
+        lines.append(f"  - `{var.name}`: `{var.value}`")
+    lines.append("- __Installed packages__:")
     for pkg in info.packages:
-        print(f"  - `{pkg.name}` v{pkg.version}")
+        lines.append(f"  - `{pkg.name}` v{pkg.version}")
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":
-    _print_debug_info()
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    _logger.info(_format_debug_info())

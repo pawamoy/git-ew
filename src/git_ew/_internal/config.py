@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 from getpass import getpass
 from typing import Any
 
 from git_ew._internal.database import Database
 from git_ew._internal.models import EmailSource
+
+_logger = logging.getLogger(__name__)
 
 
 def _prompt_password_config() -> dict[str, str]:
@@ -25,15 +28,15 @@ def _prompt_password_config() -> dict[str, str]:
 
 async def config_command() -> None:
     """Configure email delivery and ingestion sources interactively."""
-    print("=== git-ew Configuration Wizard ===\n")
+    _logger.info("=== git-ew Configuration Wizard ===")
 
     db = Database()
-    print("Initializing database...")
+    _logger.info("Initializing database")
     await db.init_db()
-    print("✓ Database initialized\n")
+    _logger.info("Database initialized")
 
-    print("Email Configuration (for sending replies)")
-    print("-" * 50)
+    _logger.info("Email Configuration (for sending replies)")
+    _logger.info("-" * 50)
     smtp_host = input("SMTP Host (e.g., smtp.fastmail.com): ").strip()
     smtp_port = input("SMTP Port (default 587): ").strip() or "587"
     from_email = input("Your Email Address: ").strip()
@@ -51,15 +54,15 @@ async def config_command() -> None:
         **_prompt_password_config(),
     }
     await db.set_config("email_config", email_config)
-    print("✓ Email configuration saved\n")
+    _logger.info("Email configuration saved")
 
-    print("Email Source Configuration")
-    print("-" * 50)
-    print("Where should git-ew fetch emails from?")
-    print("1. Maildir (local maildir folder)")
-    print("2. Mbox (mbox archive file)")
-    print("3. IMAP (Fastmail or another IMAP server)")
-    print("4. Skip for now")
+    _logger.info("Email Source Configuration")
+    _logger.info("-" * 50)
+    _logger.info("Where should git-ew fetch emails from?")
+    _logger.info("1. Maildir (local maildir folder)")
+    _logger.info("2. Mbox (mbox archive file)")
+    _logger.info("3. IMAP (Fastmail or another IMAP server)")
+    _logger.info("4. Skip for now")
 
     choice = input("\nChoice (1-4): ").strip()
     if choice == "1":
@@ -101,11 +104,11 @@ async def config_command() -> None:
             enabled=True,
         )
     else:
-        print("⊘ Skipped email source configuration\n")
+        _logger.info("Skipped email source configuration")
         return
 
     async with db.session() as session:
         session.add(source)
-    print("✓ Email source added\n")
-    print("=" * 50)
-    print("Configuration complete!\n")
+    _logger.info("Email source added")
+    _logger.info("=" * 50)
+    _logger.info("Configuration complete")

@@ -31,7 +31,7 @@ class _DebugInfo(argparse.Action):
         super().__init__(nargs=nargs, **kwargs)
 
     def __call__(self, *args: Any, **kwargs: Any) -> None:  # noqa: ARG002
-        debug._print_debug_info()
+        print(debug._format_debug_info())
         sys.exit(0)
 
 
