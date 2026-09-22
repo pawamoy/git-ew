@@ -5,13 +5,22 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
+from datetime import datetime
+from pathlib import Path
 from typing import Any
+from urllib.error import URLError
 
 import uvicorn
 
 from git_ew._internal import debug
 from git_ew._internal.config import config_command
 from git_ew._internal.database import Database
+from git_ew._internal.mailing_lists.zsh_workers.ingest import ingest_archives
+from git_ew._internal.mailing_lists.zsh_workers.sync_archives import (
+    download_archive,
+    fetch_archive_list,
+    get_missing_archives,
+)
 from git_ew._internal.sync import sync_command
 
 
@@ -22,6 +31,21 @@ class _DebugInfo(argparse.Action):
     def __call__(self, *args: Any, **kwargs: Any) -> None:  # noqa: ARG002
         debug._print_debug_info()
         sys.exit(0)
+
+
+def _parse_archive_date(value: str, *, end_of_year: bool = False) -> datetime:
+    """Parse a CLI archive date."""
+    try:
+        if len(value) == 4:
+            year = int(value)
+            if end_of_year:
+                return datetime(year + 1, 1, 1)
+            return datetime(year, 1, 1)
+        return datetime.strptime(value, "%Y-%m-%d")
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            f"invalid date {value!r}; use YYYY or YYYY-MM-DD"
+        ) from error
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -67,6 +91,46 @@ def get_parser() -> argparse.ArgumentParser:
 
     # Configuration command
     subparsers.add_parser("config", help="Configure email accounts and sources")
+
+    # Archive ingestion commands
+    ingest_parser = subparsers.add_parser("ingest", help="Ingest mailing-list archives")
+    ingest_subparsers = ingest_parser.add_subparsers(dest="ingest_source", required=True)
+    zsh_workers_parser = ingest_subparsers.add_parser(
+        "zsh-workers",
+        help="Download and ingest zsh-workers archives",
+    )
+    zsh_workers_parser.add_argument(
+        "--since",
+        type=_parse_archive_date,
+        help="Only include archives from this date (YYYY or YYYY-MM-DD)",
+    )
+    zsh_workers_parser.add_argument(
+        "--until",
+        type=lambda value: _parse_archive_date(value, end_of_year=True),
+        help="Only include archives through this date (YYYY or YYYY-MM-DD)",
+    )
+    zsh_workers_parser.add_argument(
+        "--archive-dir",
+        type=Path,
+        default=Path(".archives"),
+        help="Directory for archives (default: .archives)",
+    )
+    zsh_workers_parser.add_argument(
+        "--database",
+        default="sqlite:///./git_ew.db",
+        help="SQLAlchemy database URL (default: sqlite:///./git_ew.db)",
+    )
+    zsh_workers_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show archives to download without downloading or ingesting",
+    )
+    zsh_workers_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="List archives selected for download",
+    )
 
     return parser
 
@@ -114,6 +178,35 @@ def main(args: list[str] | None = None) -> int:
 
     if opts.command == "config":
         asyncio.run(config_command())
+        return 0
+
+    if opts.command == "ingest" and opts.ingest_source == "zsh-workers":
+        opts.archive_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            available = fetch_archive_list()
+        except URLError as error:
+            print(f"Error fetching zsh-workers archive list: {error}", file=sys.stderr)
+            return 1
+
+        missing = get_missing_archives(opts.archive_dir, available, opts.since, opts.until)
+        print(f"Found {len(available)} archives available")
+        print(f"Found {len(missing)} matching archive(s) not downloaded")
+        if opts.verbose:
+            for filename in missing:
+                print(f"  - {filename}")
+        if opts.dry_run:
+            print("Dry-run: no archives downloaded or ingested")
+            return 0
+
+        failed = 0
+        for filename in missing:
+            if not download_archive(filename, opts.archive_dir):
+                failed += 1
+        if failed:
+            print(f"Error: {failed} archive download(s) failed", file=sys.stderr)
+            return 1
+
+        ingest_archives(opts.archive_dir, opts.database)
         return 0
 
     # No command specified, show help

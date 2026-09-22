@@ -3,15 +3,17 @@
 import email
 import logging
 import tarfile
-import tempfile
 from datetime import datetime
 from email.header import decode_header
 from email.message import Message as EmailMessage
 from pathlib import Path
 from typing import Iterator
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 from git_ew._internal.database import Database
-from git_ew._internal.models import Message, Thread
+from git_ew._internal.models import Base, Message, Thread
 
 logger = logging.getLogger(__name__)
 
@@ -356,3 +358,60 @@ def ingest_archive(
         session.commit()
 
     return inserted, skipped
+
+
+class _SyncDatabase:
+    """Synchronous database adapter required by archive ingestion."""
+
+    def __init__(self, session_maker: sessionmaker) -> None:
+        self.session_maker = session_maker
+
+
+def ingest_archives(
+    archive_dir: Path = Path(".archives"),
+    database_url: str = "sqlite:///./git_ew.db",
+    *,
+    verbose: bool = True,
+) -> tuple[int, int]:
+    """Ingest all zsh-workers archives in a directory.
+
+    Args:
+        archive_dir: Directory containing ``.tgz`` archives.
+        database_url: SQLAlchemy URL for the target database.
+        verbose: Whether to print per-archive progress.
+
+    Returns:
+        A tuple of newly inserted and duplicate message counts.
+    """
+    engine = create_engine(database_url)
+    Base.metadata.create_all(engine)
+    db = _SyncDatabase(sessionmaker(bind=engine))
+    archives = sorted(archive_dir.glob("*.tgz"))
+
+    if verbose:
+        print(f"Found {len(archives)} archives to ingest\n")
+
+    total_inserted = 0
+    total_skipped = 0
+    for archive_path in archives:
+        if verbose:
+            print(f"Ingesting {archive_path.name}...", end=" ", flush=True)
+        try:
+            inserted, skipped = ingest_archive(archive_path, db)
+        except Exception:
+            if verbose:
+                print("✗ Error")
+            raise
+
+        total_inserted += inserted
+        total_skipped += skipped
+        if verbose:
+            print(f"✓ ({inserted} new, {skipped} skipped)")
+
+    if verbose:
+        print(f"\n{'=' * 60}")
+        print(f"Total emails ingested: {total_inserted}")
+        print(f"Total emails skipped (duplicates): {total_skipped}")
+        print(f"{'=' * 60}")
+
+    return total_inserted, total_skipped

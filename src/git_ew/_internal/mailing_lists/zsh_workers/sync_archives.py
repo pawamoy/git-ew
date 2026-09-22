@@ -105,6 +105,7 @@ def get_missing_archives(
     archive_dir: Path,
     available_archives: dict[str, datetime | None],
     since: datetime | None = None,
+    until: datetime | None = None,
 ) -> list[str]:
     """Determine which archives need to be downloaded.
 
@@ -112,6 +113,7 @@ def get_missing_archives(
         archive_dir: Directory where archives are stored.
         available_archives: Dict of available archive filenames to dates.
         since: Only include archives from this date onwards.
+        until: Only include archives up to this date.
 
     Returns:
         List of archive filenames that need to be downloaded.
@@ -125,6 +127,8 @@ def get_missing_archives(
 
         # Filter by date if specified
         if since is not None and file_date is not None and file_date < since:
+            continue
+        if until is not None and file_date is not None and file_date > until:
             continue
 
         missing.append(filename)

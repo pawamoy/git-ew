@@ -159,6 +159,12 @@ Access the web interface and click "Sync Emails" to fetch messages from configur
 `smtp.fastmail.com` on port `587` with TLS, and configure an IMAP source using
 `imap.fastmail.com` on port `993` with the folders `INBOX` and `Sent`.
 
+To download and ingest zsh-workers archives into the database:
+
+```bash
+git-ew ingest zsh-workers --since 2026-03-18
+```
+
 #### Command Line
 
 ```bash
