@@ -16,12 +16,13 @@
                 </div>
             </div>
             <div class="message-date">
-                {{ item.message.date.strftime('%Y-%m-%d %H:%M') }}
+                <code>{{ item.message.message_id }}</code>
+                <span>{{ item.message.date.strftime('%Y-%m-%d %H:%M') }}</span>
             </div>
         </div>
     <div class="message-body">
         {# TODO: Option to render Markdown (`|safe`) #}
-        {{ item.message.body[0] }}
+        <div class="message-text">{{ item.message.body[0] }}</div>
         {% if item.message.body[1] %}
         <details class="quoted-section">
             <summary>Show quoted text</summary>
@@ -58,18 +59,8 @@
     <div class="thread-header">
         <div class="thread-title-row">
             <h2>{{ thread.subject }}</h2>
-            <div class="thread-actions">
-                {% if thread.status == 'open' %}
-                <button class="btn btn-secondary" onclick="closeThread({{ thread.id }})">Close Thread</button>
-                {% else %}
-                <button class="btn btn-secondary" onclick="reopenThread({{ thread.id }})">Reopen Thread</button>
-                {% endif %}
-            </div>
         </div>
         <div class="thread-meta">
-            <span class="badge {% if thread.status == 'open' %}badge-open{% else %}badge-closed{% endif %}">
-                {{ thread.status|capitalize }}
-            </span>
             {% if thread.is_patch %}
             <span class="badge badge-patch">Patch</span>
             {% endif %}
@@ -158,32 +149,5 @@ async function submitReply(event) {
     }
 }
 
-async function closeThread(threadId) {
-    await updateThreadStatus(threadId, 'closed');
-}
-
-async function reopenThread(threadId) {
-    await updateThreadStatus(threadId, 'open');
-}
-
-async function updateThreadStatus(threadId, status) {
-    try {
-        const response = await fetch(`/api/thread/${threadId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ status })
-        });
-
-        if (response.ok) {
-            location.reload();
-        } else {
-            alert('Failed to update thread status');
-        }
-    } catch (error) {
-        alert('Failed to update thread status: ' + error.message);
-    }
-}
 </script>
 {% endblock %}

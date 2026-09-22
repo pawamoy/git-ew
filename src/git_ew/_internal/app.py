@@ -123,24 +123,15 @@ def _reply_all_metadata(
 
 # Routes
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request, status: str = "open") -> HTMLResponse:
-    """Show list of threads (pull requests/issues).
-
-    Args:
-        request: FastAPI request.
-        status: Filter by status (open/closed).
-
-    Returns:
-        HTML response.
-    """
+async def index(request: Request) -> HTMLResponse:
+    """Show all email threads."""
     assert db is not None  # noqa: S101
-    threads = await db.get_threads(status=status)
+    threads = await db.get_threads()
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request,
             "threads": threads,
-            "current_status": status,
         },
     )
 

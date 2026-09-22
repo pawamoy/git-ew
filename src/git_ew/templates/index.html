@@ -5,7 +5,7 @@
 {% block content %}
 <div class="threads-list">
     <div class="threads-header">
-        <h2>{{ current_status|capitalize }} Threads</h2>
+        <h2>Threads</h2>
     </div>
 
     {% if threads %}
@@ -24,9 +24,6 @@
                         <a href="/thread/{{ thread.id }}" class="thread-link">
                             {{ thread.subject }}
                         </a>
-                        {% if thread.status == 'closed' %}
-                        <span class="badge badge-closed">Closed</span>
-                        {% endif %}
                     </div>
                     <div class="thread-meta">
                         <span class="thread-date">
@@ -39,7 +36,7 @@
         </div>
     {% else %}
         <div class="empty-state">
-            <p>No {{ current_status }} threads found.</p>
+            <p>No threads found.</p>
             <p>Click "Sync Emails" to fetch threads from your email sources.</p>
         </div>
     {% endif %}
