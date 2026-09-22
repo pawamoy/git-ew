@@ -1,27 +1,21 @@
 # Contributing
 
-Contributions are welcome and appreciated. This project uses email-based workflows itself.
+Contributions are welcome, and they are greatly appreciated. Every little bit helps, and credit will always be given.
 
-## Setup
+**Please always create an issue before working on a new feature or a bug fix, so that we can discuss the implementation and make sure that your work will be merged.**
 
-Fork and clone the repository:
+## Environment setup
+
+Install [uv](https://github.com/astral-sh/uv) and [direnv](https://direnv.net/), fork and clone the repository, then:
 
 ```bash
 git clone https://github.com/pawamoy/git-ew.git
 cd git-ew
+direnv allow
 make setup
 ```
 
-If it fails, install [uv](https://github.com/astral-sh/uv) manually:
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv sync
-```
-
-Run `make help` to see available commands.
-
-## Development Workflow
+You now have the dependencies installed.
 
 1. Create a branch: `git switch -c feature-or-bugfix-name`
 2. Make your changes
@@ -56,7 +50,7 @@ tests/
 └── test_thread_utils.py
 ```
 
-## Testing
+The entry-point to run commands and tasks is the `make` Python script, located in the `scripts` directory. Try running `make` to show the available commands and tasks. The *commands* do not need the Python dependencies to be installed, while the *tasks* do. The cross-platform tasks are written in Python, thanks to [duty](https://github.com/pawamoy/duty).
 
 Run tests with pytest:
 
