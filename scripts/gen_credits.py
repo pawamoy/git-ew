@@ -65,14 +65,10 @@ def _requirements(deps: Iterable[str]) -> dict[str, Requirement]:
 def _extra_marker(req: Requirement) -> str | None:
     if not req.marker:
         return None
-    for marker in req.marker._markers:
-        if not isinstance(marker, tuple):
-            continue
-        left, _, right = cast("tuple[object, object, object]", marker)
-        if getattr(left, "value", None) == "extra":
-            value = getattr(right, "value", None)
-            return value if isinstance(value, str) else None
-    return None
+    try:
+        return next(marker[2].value for marker in req.marker._markers if getattr(marker[0], "value", None) == "extra")  # ty:ignore[unresolved-attribute]
+    except StopIteration:
+        return None
 
 
 def _get_metadata() -> Metadata:
