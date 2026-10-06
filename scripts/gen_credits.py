@@ -27,7 +27,6 @@ from importlib.metadata import distributions
 from itertools import chain
 from pathlib import Path
 from textwrap import dedent
-from typing import cast
 
 from jinja2 import StrictUndefined
 from jinja2.sandbox import SandboxedEnvironment
